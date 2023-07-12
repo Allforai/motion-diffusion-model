@@ -40,6 +40,10 @@ def get_model_args(args, data):
         data_rep = 'hml_vec'
         njoints = 251
         nfeats = 1
+    elif args.dataset == 'p2m':
+        data_rep = 'rot6d'
+        njoints = 135
+        nfeats = 1
 
     return {'modeltype': '', 'njoints': njoints, 'nfeats': nfeats, 'num_actions': num_actions,
             'translation': True, 'pose_rep': 'rot6d', 'glob': True, 'glob_rot': True,

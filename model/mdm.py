@@ -6,7 +6,6 @@ import clip
 from model.rotation2xyz import Rotation2xyz
 
 
-
 class MDM(nn.Module):
     def __init__(self, modeltype, njoints, nfeats, num_actions, translation, pose_rep, glob, glob_rot,
                  latent_dim=256, ff_size=1024, num_layers=8, num_heads=4, dropout=0.1,
