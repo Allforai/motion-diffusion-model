@@ -69,8 +69,9 @@ def get_opt(opt_path, device):
         opt.dim_pose = 251
         opt.max_motion_length = 196
     elif opt.dataset_name == 'p2m':
-        opt.data_root = './dataset/HumanML3D_smplh'
+        opt.data_root = 'dataset/HumanML3D_smplh'
         opt.motion_dir = pjoin(opt.data_root, 'pose2motion_smpl')
+        # opt.text_dir = pjoin(opt.data_root, 'texts')
         opt.joints_num = 22
         opt.dim_pose = 135
         opt.max_motion_length = 64

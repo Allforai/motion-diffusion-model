@@ -9,7 +9,7 @@ from utils.model_util import create_model_and_diffusion
 from train.training_loop import TrainLoop
 import pydevd_pycharm
 pydevd_pycharm.settrace('10.8.32.196', port=17778, stdoutToServer=True, stderrToServer=True)
-
+from train.train_platforms import ClearmlPlatform, TensorboardPlatform, NoPlatform  # required for the eval operation
 
 def main():
     args = train_args()
@@ -31,7 +31,7 @@ def main():
     dist_util.setup_dist(args.device)
 
     print("creating data loader...")
-    training_data = HumanML3D()
+    training_data = HumanML3D(datapath='dataset/p2m_humanml_opt.txt')
     train_loader = DataLoader(training_data, batch_size=args.batch_size, shuffle=True, num_workers=8)
 
     print("creating model and diffusion...")

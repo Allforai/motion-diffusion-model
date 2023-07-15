@@ -247,9 +247,6 @@ class Text2MotionDatasetV2(data.Dataset):
                             text_data.append(text_dict)
                         else:
                             try:
-                                print(f_tag)
-                                print(to_tag)
-                                print("have tag")
                                 n_motion = motion[int(f_tag*20) : int(to_tag*20)]
                                 if (len(n_motion)) < min_motion_len or (len(n_motion) >= 200):
                                     continue
