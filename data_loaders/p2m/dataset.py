@@ -121,11 +121,13 @@ class HumanML3D(data.Dataset):
 
         idx = random.randint(0, len(motion['features']) - self.motion_length)
         features = motion['features'][idx:idx + self.motion_length]
-        pose_feature = motion['pose_feature'][idx:idx + self.motion_length]
+        features = features.T.unsqueeze(1)
+        pose_feature = motion['pose_feature'][np.arange(idx, idx + self.motion_length, 8)]
+        padding_feature = torch.zeros(8, 3)
+        pose_feature = torch.cat((padding_feature, pose_feature), dim=-1)
         # trans_feature = motion['trans_feature'][idx:idx + self.motion_len]
-
         # return {'features': features, 'pose_feature': pose_feature, 'trans_feature': trans_feature, 'length': m_length}
-        return features, pose_feature
+        return features, {'y': {'pose_feature': pose_feature, 'mask': torch.ones(8, dtype=bool)}}
 
     def __len__(self):
         return len(self.data_dict)
@@ -179,6 +181,8 @@ def smpl_data_to_matrix_and_trans(data):
                                vel_trajectory),
                               dim=-1)
     pose_feature = rearrange(poses, "... joints rot -> ... (joints rot)")
+    padding_feature = torch.zeros(64, 3)
+    pose_feature = torch.cat((pose_feature, padding_feature), dim=-1)
     features = torch.cat((root_y[..., None],
                           vel_trajectory,
                           rearrange(poses, "... joints rot -> ... (joints rot)")),

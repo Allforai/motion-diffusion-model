@@ -4,6 +4,8 @@ import torch.nn as nn
 import torch.nn.functional as F
 import clip
 from model.rotation2xyz import Rotation2xyz
+from human_body_prior.models.vposer_model import NormalDistDecoder, VPoser
+from model.temos_encoder import ActorAgnosticEncoder
 
 
 class MDM(nn.Module):
@@ -88,6 +90,12 @@ class MDM(nn.Module):
             if 'action' in self.cond_mode:
                 self.embed_action = EmbedAction(self.num_actions, self.latent_dim)
                 print('EMBED ACTION')
+            if 'p2m' in self.cond_mode:
+                self.embed_pose = nn.Linear(256, self.latent_dim)
+                self.temos_encoder = self.load_and_freeze_temos()
+                print('EMBED POSE')
+
+
 
         self.output_process = OutputProcess(self.data_rep, self.input_feats, self.latent_dim, self.njoints,
                                             self.nfeats)
@@ -137,6 +145,19 @@ class MDM(nn.Module):
             texts = clip.tokenize(raw_text, truncate=True).to(device) # [bs, context_length] # if n_tokens > 77 -> will truncate
         return self.clip_model.encode_text(texts).float()
 
+    def load_and_freeze_temos(self):
+        pose_model = ActorAgnosticEncoder(135, True, num_layers=6)
+        pretrained_dict = torch.load('/mnt/disk_1/jinpeng/motion-diffusion-model/temos_encoder/last_state_dict.ckpt', map_location='cpu')
+        pose_model.load_state_dict(pretrained_dict)
+        pose_model.eval()
+        for p in pose_model.parameters():
+            p.requires_grad = False
+
+        return pose_model
+
+    def encode_pose(self, x):
+        return self.temos_encoder(x)
+
     def forward(self, x, timesteps, y=None):
         """
         x: [batch_size, njoints, nfeats, max_frames], denoted x_t in the paper
@@ -152,6 +173,9 @@ class MDM(nn.Module):
         if 'action' in self.cond_mode:
             action_emb = self.embed_action(y['action'])
             emb += self.mask_cond(action_emb, force_mask=force_mask)
+        if 'p2m' in self.cond_mode:
+            enc_pose = self.encode_pose(y['pose_feature'])
+            emb += self.embed_pose(self.mask_cond(enc_pose, force_mask=force_mask))
 
         if self.arch == 'gru':
             x_reshaped = x.reshape(bs, njoints*nfeats, 1, nframes)
@@ -186,11 +210,9 @@ class MDM(nn.Module):
         output = self.output_process(output)  # [bs, njoints, nfeats, nframes]
         return output
 
-
     def _apply(self, fn):
         super()._apply(fn)
         self.rot2xyz.smpl_model._apply(fn)
-
 
     def train(self, *args, **kwargs):
         super().train(*args, **kwargs)

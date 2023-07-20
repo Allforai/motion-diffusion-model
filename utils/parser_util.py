@@ -98,7 +98,7 @@ def add_model_options(parser):
 
 def add_data_options(parser):
     group = parser.add_argument_group('dataset')
-    group.add_argument("--dataset", default='humanml', choices=['humanml', 'kit', 'humanact12', 'uestc'], type=str,
+    group.add_argument("--dataset", default='humanml', choices=['humanml', 'kit', 'humanact12', 'uestc', 'p2m'], type=str,
                        help="Dataset name (choose from list).")
     group.add_argument("--data_dir", default="", type=str,
                        help="If empty, will use defaults according to the specified dataset.")
@@ -206,8 +206,8 @@ def get_cond_mode(args):
         cond_mode = 'no_cond'
     elif args.dataset in ['kit', 'humanml']:
         cond_mode = 'text'
-    else:
-        cond_mode = 'action'
+    elif args.dataset in ['p2m']:
+        cond_mode = 'p2m'
     return cond_mode
 
 
