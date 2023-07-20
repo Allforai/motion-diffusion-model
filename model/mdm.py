@@ -93,6 +93,7 @@ class MDM(nn.Module):
             if 'p2m' in self.cond_mode:
                 self.embed_pose = nn.Linear(256, self.latent_dim)
                 self.temos_encoder = self.load_and_freeze_temos()
+                self.orient = nn.Linear(126, 135)
                 print('EMBED POSE')
 
 
@@ -156,7 +157,10 @@ class MDM(nn.Module):
         return pose_model
 
     def encode_pose(self, x):
-        return self.temos_encoder(x)
+        if x.shape[2] == 135:
+            return self.temos_encoder(x)
+        else:
+            return self.temos_encoder(self.orient(x))
 
     def forward(self, x, timesteps, y=None):
         """

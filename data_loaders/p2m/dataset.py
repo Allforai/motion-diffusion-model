@@ -10,6 +10,7 @@ import torch
 from .geometry import axis_angle_to_matrix, matrix_to_axis_angle
 from einops import rearrange
 
+
 #
 # class Pose2MotionDataset(data.dataset):
 #     def __init__(self, opt, split_file):
@@ -61,7 +62,6 @@ from einops import rearrange
 
 class HumanML3D(data.Dataset):
     def __init__(self, datapath='./dataset/humanml_opt.txt', split="train"):
-
         self.dataset_name = 'p2m'
         self.dataname = 'p2m'
 
@@ -105,9 +105,12 @@ class HumanML3D(data.Dataset):
         #
         # name_list, length_list = zip(*sorted(zip(new_name_list, length_list), key=lambda x: x[1]))
         self.min_motion_len = 64  # data length
-        self.data_dict = np.load('/mnt/disk_1/jinpeng/motion-diffusion-model/dataset/debug/data_dict.npy', allow_pickle=True).item()
-        self.name_list = np.load('/mnt/disk_1/jinpeng/motion-diffusion-model/dataset/debug/name_list.npy', allow_pickle=True)
-        self.length_list = np.load('/mnt/disk_1/jinpeng/motion-diffusion-model/dataset/debug/length_list.npy', allow_pickle=True)
+        self.data_dict = np.load('/mnt/disk_1/jinpeng/motion-diffusion-model/dataset/debug/data_dict.npy',
+                                 allow_pickle=True).item()
+        self.name_list = np.load('/mnt/disk_1/jinpeng/motion-diffusion-model/dataset/debug/name_list.npy',
+                                 allow_pickle=True)
+        self.length_list = np.load('/mnt/disk_1/jinpeng/motion-diffusion-model/dataset/debug/length_list.npy',
+                                   allow_pickle=True)
         # self.length_arr = np.array(length_list)
         # self.data_dict = data_dict
         # self.name_list = name_list
@@ -123,10 +126,10 @@ class HumanML3D(data.Dataset):
         features = motion['features'][idx:idx + self.motion_length]
         features = features.T.unsqueeze(1)
         pose_feature = motion['pose_feature'][np.arange(idx, idx + self.motion_length, 8)]
-        padding_feature = torch.zeros(8, 3)
-        pose_feature = torch.cat((padding_feature, pose_feature), dim=-1)
-        # trans_feature = motion['trans_feature'][idx:idx + self.motion_len]
-        # return {'features': features, 'pose_feature': pose_feature, 'trans_feature': trans_feature, 'length': m_length}
+        # padding_feature = torch.zeros(8, 3)
+        pose_feature = pose_feature[:, 6:]  # 126 dimension
+        # trans_feature = motion['trans_feature'][idx:idx + self.motion_len] return {'features': features,
+        # 'pose_feature': pose_feature, 'trans_feature': trans_feature, 'length': m_length}
         return features, {'y': {'pose_feature': pose_feature, 'mask': torch.ones(64, dtype=bool)}}
 
     def __len__(self):
@@ -139,10 +142,9 @@ def smpl_data_to_matrix_and_trans(data):
     pose_body = torch.from_numpy(data["pose_body"])
     nframes = len(trans)
 
-    axis_angle_poses = torch.cat((root_orient.reshape(nframes, -1, 3), pose_body.reshape(nframes, -1, 3)), dim = 1)
+    axis_angle_poses = torch.cat((root_orient.reshape(nframes, -1, 3), pose_body.reshape(nframes, -1, 3)), dim=1)
 
     matrix_poses = axis_angle_to("matrix", axis_angle_poses)
-
 
     # extract the root gravity axis
     # for smpl it is the last coordinate
