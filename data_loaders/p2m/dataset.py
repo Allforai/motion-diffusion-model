@@ -127,7 +127,7 @@ class HumanML3D(data.Dataset):
         pose_feature = torch.cat((padding_feature, pose_feature), dim=-1)
         # trans_feature = motion['trans_feature'][idx:idx + self.motion_len]
         # return {'features': features, 'pose_feature': pose_feature, 'trans_feature': trans_feature, 'length': m_length}
-        return features, {'y': {'pose_feature': pose_feature, 'mask': torch.ones(8, dtype=bool)}}
+        return features, {'y': {'pose_feature': pose_feature, 'mask': torch.ones(64, dtype=bool)}}
 
     def __len__(self):
         return len(self.data_dict)

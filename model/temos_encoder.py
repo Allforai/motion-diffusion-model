@@ -5,6 +5,7 @@ import numpy as np
 from typing import List, Optional, Union
 from torch import nn, Tensor
 from torch.distributions.distribution import Distribution
+torch.set_default_dtype(torch.float64)
 
 
 def lengths_to_mask(lengths: List[int], device: torch.device) -> Tensor:
@@ -24,7 +25,7 @@ class ActorAgnosticEncoder(nn.Module):
 
         input_feats = nfeats
         self.skel_embedding = nn.Linear(input_feats, latent_dim)
-
+        self.vae = vae
         # Action agnostic: only one set of params
         if vae:
             self.mu_token = nn.Parameter(torch.randn(latent_dim))
@@ -61,7 +62,7 @@ class ActorAgnosticEncoder(nn.Module):
         x = x.permute(1, 0, 2)  # now it is [nframes, bs, latent_dim]
 
         # Each batch has its own set of tokens
-        if self.hparams.vae:
+        if self.vae:
             mu_token = torch.tile(self.mu_token, (bs,)).reshape(bs, -1)
             logvar_token = torch.tile(self.logvar_token, (bs,)).reshape(bs, -1)
 
@@ -85,12 +86,12 @@ class ActorAgnosticEncoder(nn.Module):
         xseq = self.sequence_pos_encoding(xseq)
         final = self.seqTransEncoder(xseq, src_key_padding_mask=~aug_mask)
 
-        if self.hparams.vae:
+        if self.vae:
             mu, logvar = final[0], final[1]
             std = logvar.exp().pow(0.5)
             # https://github.com/kampta/pytorch-distributions/blob/master/gaussian_vae.py
-            dist = torch.distributions.Normal(mu, std)
-            return dist
+            # dist = torch.distributions.Normal(mu, std)
+            return mu
         else:
             return final[0]
 
