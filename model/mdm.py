@@ -6,6 +6,7 @@ import clip
 from model.rotation2xyz import Rotation2xyz
 from human_body_prior.models.vposer_model import NormalDistDecoder, VPoser
 from model.temos_encoder import ActorAgnosticEncoder
+torch.set_default_dtype(torch.float32)
 
 
 class MDM(nn.Module):
@@ -157,7 +158,7 @@ class MDM(nn.Module):
         return pose_model
 
     def encode_pose(self, x):
-        if x.shape[2] == 135:
+        if x.shape[-1] == 135:
             return self.temos_encoder(x)
         else:
             return self.temos_encoder(self.orient(x))
@@ -172,7 +173,7 @@ class MDM(nn.Module):
 
         force_mask = y.get('uncond', False)
         if 'text' in self.cond_mode:
-            enc_text = self.encode_text(y['text'])
+            enc_text = self.encode_text(y['text']).to(torch.float64)
             emb += self.embed_text(self.mask_cond(enc_text, force_mask=force_mask))
         if 'action' in self.cond_mode:
             action_emb = self.embed_action(y['action'])

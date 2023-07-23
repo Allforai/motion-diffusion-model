@@ -49,7 +49,6 @@ class ActorAgnosticEncoder(nn.Module):
             lengths = [len(feature) for feature in features]
 
         device = features.device
-
         bs, nframes, nfeats = features.shape
         mask = lengths_to_mask(lengths, device)
 

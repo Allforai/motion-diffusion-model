@@ -28,12 +28,15 @@ class Rotation2xyz:
 
         if jointstype not in JOINTSTYPES:
             raise NotImplementedError("This jointstype is not implemented.")
-
-        if translation:
-            x_translations = x[:, -1, :3]
-            x_rotations = x[:, :-1]
+        if x.shape[1] == 135:
+            x_translations = x[:, -3:]
+            x_rotations = x[:, :-3].reshape(1, 22, 6, 64)  # nsample 1, joints 22, feats 6, frames 64
         else:
-            x_rotations = x
+            if translation:
+                x_translations = x[:, -1, :3]
+                x_rotations = x[:, :-1]
+            else:
+                x_rotations = x
 
         x_rotations = x_rotations.permute(0, 3, 1, 2)
         nsamples, time, njoints, feats = x_rotations.shape
@@ -49,7 +52,10 @@ class Rotation2xyz:
             rotations = geometry.rotation_6d_to_matrix(x_rotations[mask])
         else:
             raise NotImplementedError("No geometry for this one.")
-
+        hand_rotations = torch.eye(3, device=x.device).view(
+            1, 1, 3, 3).expand(
+            1, 2, -1, -1).repeat(64, 1, 1, 1).contiguous()
+        rotations = torch.cat((rotations, hand_rotations), dim=1)
         if not glob:
             global_orient = torch.tensor(glob_rot, device=x.device)
             global_orient = geometry.axis_angle_to_matrix(global_orient).view(1, 1, 3, 3)
@@ -80,11 +86,14 @@ class Rotation2xyz:
             x_xyz = x_xyz - x_xyz[:, [rootindex], :, :]
 
         if translation and vertstrans:
-            # the first translation root at the origin
-            x_translations = x_translations - x_translations[:, :, [0]]
-
-            # add the translation to all the joints
-            x_xyz = x_xyz + x_translations[:, None, :, :]
+            if pose_rep == "rot6d":
+                x_translations = x_translations.permute(0, 2, 1, 3)
+                x_xyz = x_xyz + x_translations
+                # the first translation root at the origin
+            else:
+                x_translations = x_translations - x_translations[:, :, [0]]
+                # add the translation to all the joints
+                x_xyz = x_xyz + x_translations[:, None, :, :]
 
         if get_rotations_back:
             return x_xyz, rotations, global_orient

@@ -86,7 +86,7 @@ class HumanML3D(data.Dataset):
         # with cs.open(self.split_file, 'r') as f:
         #     for line in f.readlines():
         #         id_list.append(line.strip())
-        #
+
         # new_name_list = []
         # length_list = []
         # for name in tqdm(id_list):
@@ -102,21 +102,30 @@ class HumanML3D(data.Dataset):
         #         length_list.append(len(motion['features']))
         #     except:
         #         pass
-        #
+
         # name_list, length_list = zip(*sorted(zip(new_name_list, length_list), key=lambda x: x[1]))
-        self.min_motion_len = 64  # data length
-        self.data_dict = np.load('/mnt/disk_1/jinpeng/motion-diffusion-model/dataset/debug/data_dict.npy',
-                                 allow_pickle=True).item()
-        self.name_list = np.load('/mnt/disk_1/jinpeng/motion-diffusion-model/dataset/debug/name_list.npy',
-                                 allow_pickle=True)
-        self.length_list = np.load('/mnt/disk_1/jinpeng/motion-diffusion-model/dataset/debug/length_list.npy',
-                                   allow_pickle=True)
+        if split == 'train':
+            self.min_motion_len = 64  # data length
+            self.data_dict = np.load('/mnt/disk_1/jinpeng/motion-diffusion-model/dataset/debug/data_dict.npy',
+                                     allow_pickle=True).item()
+            self.name_list = np.load('/mnt/disk_1/jinpeng/motion-diffusion-model/dataset/debug/name_list.npy',
+                                     allow_pickle=True)
+            self.length_list = np.load('/mnt/disk_1/jinpeng/motion-diffusion-model/dataset/debug/length_list.npy',
+                                       allow_pickle=True)
+        else:
+            self.min_motion_len = 64  # data length
+            self.data_dict = np.load('/mnt/disk_1/jinpeng/motion-diffusion-model/dataset/debug/data_dict_test.npy',
+                                     allow_pickle=True).item()
+            self.name_list = np.load('/mnt/disk_1/jinpeng/motion-diffusion-model/dataset/debug/name_list_test.npy',
+                                     allow_pickle=True)
+            self.length_list = np.load('/mnt/disk_1/jinpeng/motion-diffusion-model/dataset/debug/length_list_test.npy',
+                                       allow_pickle=True)
         # self.length_arr = np.array(length_list)
         # self.data_dict = data_dict
         # self.name_list = name_list
-        # np.save('/mnt/disk_1/jinpeng/motion-diffusion-model/dataset/debug/data_dict.npy', data_dict)
-        # np.save('/mnt/disk_1/jinpeng/motion-diffusion-model/dataset/debug/name_list.npy', name_list)
-        # np.save('/mnt/disk_1/jinpeng/motion-diffusion-model/dataset/debug/length_list.npy', np.array(length_list))
+        # np.save('/mnt/disk_1/jinpeng/motion-diffusion-model/dataset/debug/data_dict_test.npy', data_dict)
+        # np.save('/mnt/disk_1/jinpeng/motion-diffusion-model/dataset/debug/name_list_test.npy', name_list)
+        # np.save('/mnt/disk_1/jinpeng/motion-diffusion-model/dataset/debug/length_list_test.npy', np.array(length_list))
 
     def __getitem__(self, item):
         data = self.data_dict[self.name_list[item]]
@@ -130,7 +139,9 @@ class HumanML3D(data.Dataset):
         pose_feature = pose_feature[:, 6:]  # 126 dimension
         # trans_feature = motion['trans_feature'][idx:idx + self.motion_len] return {'features': features,
         # 'pose_feature': pose_feature, 'trans_feature': trans_feature, 'length': m_length}
-        return features, {'y': {'pose_feature': pose_feature, 'mask': torch.ones(64, dtype=bool)}}
+        return features.type(torch.float32), {
+            'y': {'pose_feature': pose_feature.type(torch.float32), 'lengths': 64 * torch.ones(1).type(torch.IntTensor),
+                  'mask': torch.ones(64, dtype=bool)}}
 
     def __len__(self):
         return len(self.data_dict)
@@ -183,8 +194,8 @@ def smpl_data_to_matrix_and_trans(data):
                                vel_trajectory),
                               dim=-1)
     pose_feature = rearrange(poses, "... joints rot -> ... (joints rot)")
-    padding_feature = torch.zeros(64, 3)
-    pose_feature = torch.cat((pose_feature, padding_feature), dim=-1)
+    # padding_feature = torch.zeros(64, 3)
+    # pose_feature = torch.cat((pose_feature, padding_feature), dim=-1)
     features = torch.cat((root_y[..., None],
                           vel_trajectory,
                           rearrange(poses, "... joints rot -> ... (joints rot)")),

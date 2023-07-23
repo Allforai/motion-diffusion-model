@@ -3,7 +3,9 @@
 Generate a large batch of image samples from a model and save them as a large
 numpy array. This can be used to produce samples for FID evaluation.
 """
+from data_loaders.p2m.dataset import HumanML3D
 from utils.fixseed import fixseed
+from torch.utils.data import DataLoader
 import os
 import numpy as np
 import torch
@@ -17,7 +19,6 @@ import data_loaders.humanml.utils.paramUtil as paramUtil
 from data_loaders.humanml.utils.plot_script import plot_3d_motion
 import shutil
 from data_loaders.tensors import collate
-
 torch.set_default_dtype(torch.float32)
 
 
@@ -27,10 +28,11 @@ def main():
     out_path = args.output_dir
     name = os.path.basename(os.path.dirname(args.model_path))
     niter = os.path.basename(args.model_path).replace('model', '').replace('.pt', '')
-    max_frames = 196 if args.dataset in ['kit', 'humanml'] else 60
+    max_frames = 196 if args.dataset in ['kit', 'humanml'] else 64
     fps = 12.5 if args.dataset == 'kit' else 20
-    n_frames = min(max_frames, int(args.motion_length * fps))
-    is_using_data = not any([args.input_text, args.text_prompt, args.action_file, args.action_name])
+    n_frames = min(max_frames, int(args.motion_length*fps))
+    is_using_data = True
+    # is_using_data = not any([args.input_text, args.text_prompt, args.action_file, args.action_name])
     dist_util.setup_dist(args.device)
     if out_path == '':
         out_path = os.path.join(os.path.dirname(args.model_path),
@@ -68,19 +70,22 @@ def main():
     # (specify through the --seed flag)
     args.batch_size = args.num_samples  # Sampling a single batch from the testset, with exactly args.num_samples
 
-    print('Loading dataset...')
-    data = load_dataset(args, max_frames, n_frames)
+
+    print("Loading Dataset")
+    data = HumanML3D(datapath='dataset/p2m_humanml_opt.txt')
+    train_loader = DataLoader(data, batch_size=1, shuffle=True, num_workers=8)
+    # data = load_dataset(args, max_frames, n_frames)
     total_num_samples = args.num_samples * args.num_repetitions
 
     print("Creating model and diffusion...")
-    model, diffusion = create_model_and_diffusion(args, data)
+    model, diffusion = create_model_and_diffusion(args, train_loader)
 
     print(f"Loading checkpoints from [{args.model_path}]...")
     state_dict = torch.load(args.model_path, map_location='cpu')
     load_model_wo_clip(model, state_dict)
 
     if args.guidance_param != 1:
-        model = ClassifierFreeSampleModel(model)  # wrapping model with the classifier-free sampler
+        model = ClassifierFreeSampleModel(model)   # wrapping model with the classifier-free sampler
     model.to(dist_util.dev())
     model.eval()  # disable random masking
 
@@ -98,6 +103,7 @@ def main():
             action = data.dataset.action_name_to_action(action_text)
             collate_args = [dict(arg, action=one_action, action_text=one_action_text) for
                             arg, one_action, one_action_text in zip(collate_args, action, action_text)]
+
         _, model_kwargs = collate(collate_args)
 
     all_motions = []
@@ -110,7 +116,9 @@ def main():
         # add CFG scale to batch
         if args.guidance_param != 1:
             model_kwargs['y']['scale'] = torch.ones(args.batch_size, device=dist_util.dev()) * args.guidance_param
-
+        model_kwargs['y'] = {key: val.to(dist_util.dev()) if torch.is_tensor(val) else val for key, val in model_kwargs['y'].items()}
+        if len(model_kwargs['y']['pose_feature'].shape) == 2:
+            model_kwargs['y']['pose_feature'] = model_kwargs['y']['pose_feature'].unsqueeze(0)
         sample_fn = diffusion.p_sample_loop
 
         sample = sample_fn(
@@ -135,22 +143,22 @@ def main():
             sample = sample.view(-1, *sample.shape[2:]).permute(0, 2, 3, 1)
 
         rot2xyz_pose_rep = 'xyz' if model.data_rep in ['xyz', 'hml_vec'] else model.data_rep
-        rot2xyz_mask = None if rot2xyz_pose_rep == 'xyz' else model_kwargs['y']['mask'].reshape(args.batch_size,
-                                                                                                n_frames).bool()
+        rot2xyz_mask = None if rot2xyz_pose_rep == 'xyz' else model_kwargs['y']['mask'].reshape(args.batch_size, n_frames).bool()
         sample = model.rot2xyz(x=sample, mask=rot2xyz_mask, pose_rep=rot2xyz_pose_rep, glob=True, translation=True,
                                jointstype='smpl', vertstrans=True, betas=None, beta=0, glob_rot=None,
                                get_rotations_back=False)
 
         if args.unconstrained:
             all_text += ['unconstrained'] * args.num_samples
-        else:
-            text_key = 'text' if 'text' in model_kwargs['y'] else 'action_text'
-            all_text += model_kwargs['y'][text_key]
+        # else:
+        #     text_key = 'text' if 'text' in model_kwargs['y'] else 'action_text'
+        #     # all_text += model_kwargs['y'][text_key]
 
         all_motions.append(sample.cpu().numpy())
         all_lengths.append(model_kwargs['y']['lengths'].cpu().numpy())
 
         print(f"created {len(all_motions) * args.batch_size} samples")
+
 
     all_motions = np.concatenate(all_motions, axis=0)
     all_motions = all_motions[:total_num_samples]  # [bs, njoints, 6, seqlen]
@@ -183,20 +191,21 @@ def main():
     for sample_i in range(args.num_samples):
         rep_files = []
         for rep_i in range(args.num_repetitions):
-            caption = all_text[rep_i * args.batch_size + sample_i]
-            length = all_lengths[rep_i * args.batch_size + sample_i]
-            motion = all_motions[rep_i * args.batch_size + sample_i].transpose(2, 0, 1)[:length]
+            # caption = all_text[rep_i*args.batch_size + sample_i]
+            caption = 'test'
+            length = all_lengths[rep_i*args.batch_size + sample_i]
+            motion = all_motions[rep_i*args.batch_size + sample_i].transpose(2, 0, 1)[:length]
             save_file = sample_file_template.format(sample_i, rep_i)
             print(sample_print_template.format(caption, sample_i, rep_i, save_file))
             animation_save_path = os.path.join(out_path, save_file)
+            animation_save_path = animation_save_path.replace('.mp4', '.gif')
             plot_3d_motion(animation_save_path, skeleton, motion, dataset=args.dataset, title=caption, fps=fps)
             # Credit for visualization: https://github.com/EricGuo5513/text-to-motion
             rep_files.append(animation_save_path)
 
         sample_files = save_multiple_samples(args, out_path,
-                                             row_print_template, all_print_template, row_file_template,
-                                             all_file_template,
-                                             caption, num_samples_in_out_file, rep_files, sample_files, sample_i)
+                                               row_print_template, all_print_template, row_file_template, all_file_template,
+                                               caption, num_samples_in_out_file, rep_files, sample_files, sample_i)
 
     abs_path = os.path.abspath(out_path)
     print(f'[Done] Results are at [{abs_path}]')
