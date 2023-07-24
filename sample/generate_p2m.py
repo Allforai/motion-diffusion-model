@@ -19,6 +19,8 @@ import data_loaders.humanml.utils.paramUtil as paramUtil
 from data_loaders.humanml.utils.plot_script import plot_3d_motion
 import shutil
 from data_loaders.tensors import collate
+from body_models.smplh import SMPLH
+from data_loaders.p2m.tools import inverse
 torch.set_default_dtype(torch.float32)
 
 
@@ -142,28 +144,20 @@ def main():
             sample = recover_from_ric(sample, n_joints)
             sample = sample.view(-1, *sample.shape[2:]).permute(0, 2, 3, 1)
 
-        rot2xyz_pose_rep = 'xyz' if model.data_rep in ['xyz', 'hml_vec'] else model.data_rep
-        rot2xyz_mask = None if rot2xyz_pose_rep == 'xyz' else model_kwargs['y']['mask'].reshape(args.batch_size, n_frames).bool()
-        sample = model.rot2xyz(x=sample, mask=rot2xyz_mask, pose_rep=rot2xyz_pose_rep, glob=True, translation=True,
-                               jointstype='smpl', vertstrans=True, betas=None, beta=0, glob_rot=None,
-                               get_rotations_back=False)
+        smplh = SMPLH(
+            path='/mnt/disk_1/jinpeng/motion-diffusion-model/body_models/',
+            input_pose_rep='rot6d',
+            batch_size=1,
+            gender='neutral').to(sample.device)
+        trans = sample[:, 0:3].permute(0, 3, 2, 1)
+        trans = inverse(trans)
+        pose = sample[:, 3:].permute(0, 3, 2, 1).reshape(1, 64, -1, 6)
+        vertices = smplh(1, pose,
+                         trans).cpu().numpy()
 
-        if args.unconstrained:
-            all_text += ['unconstrained'] * args.num_samples
-        # else:
-        #     text_key = 'text' if 'text' in model_kwargs['y'] else 'action_text'
-        #     # all_text += model_kwargs['y'][text_key]
-
-        all_motions.append(sample.cpu().numpy())
-        all_lengths.append(model_kwargs['y']['lengths'].cpu().numpy())
-
-        print(f"created {len(all_motions) * args.batch_size} samples")
-
-
+        all_motions.append(vertices)
     all_motions = np.concatenate(all_motions, axis=0)
     all_motions = all_motions[:total_num_samples]  # [bs, njoints, 6, seqlen]
-    all_text = all_text[:total_num_samples]
-    all_lengths = np.concatenate(all_lengths, axis=0)[:total_num_samples]
 
     if os.path.exists(out_path):
         shutil.rmtree(out_path)
