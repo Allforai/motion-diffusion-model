@@ -52,11 +52,10 @@ def render_cli(path, output, mode, downsample):
 if __name__ == '__main__':
     # args = parse_args()
     mode = "video"
-    output = './'
+    output = './compare/gt_results'
     print(os.path.abspath(__file__))
     rootPath = os.path.dirname(os.path.abspath(__file__))
     sys.path.append(rootPath)
-    os.getcwd()
     render_cli(
-        path='/mnt/disk_1/jinpeng/motion-diffusion-model/save/p2m_humanml_trans_enc_512_126_temos/samples_p2m_humanml_trans_enc_512_126_temos_000050000_seed10_the_person_walked_forward_and_is_picking_up_his_toolbox/results.npy',
+        path='/mnt/disk_1/jinpeng/motion-diffusion-model/save/p2m_humanml_trans_enc_512_126_temos/samples_p2m_humanml_trans_enc_512_126_temos_000050000_seed10_the_person_walked_forward_and_is_picking_up_his_toolbox/gt_results.npy',
         output=output, downsample=False, mode=mode)

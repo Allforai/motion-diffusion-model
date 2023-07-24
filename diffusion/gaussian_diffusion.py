@@ -658,7 +658,8 @@ class GaussianDiffusion:
             final = sample
         if dump_steps is not None:
             return dump
-        return final["sample"]
+        # return final["sample"]
+        return final
 
     def p_sample_loop_progressive(
         self,

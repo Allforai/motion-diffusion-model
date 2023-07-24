@@ -200,7 +200,7 @@ class Text2MotionDataset(data.Dataset):
         "Z Normalization"
         motion = (motion - self.mean) / self.std
 
-        return word_embeddings, pos_one_hots, caption, sent_len, motion, m_length
+        return word_embeddings, pos_one_hots, caption, sent_len, motion.type(torch.float32), m_length
 
 
 '''For use of training text motion matching model, and evaluations'''

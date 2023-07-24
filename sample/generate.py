@@ -110,7 +110,8 @@ def main():
         # add CFG scale to batch
         if args.guidance_param != 1:
             model_kwargs['y']['scale'] = torch.ones(args.batch_size, device=dist_util.dev()) * args.guidance_param
-
+        model_kwargs['y'] = {key: val.to(dist_util.dev()) if torch.is_tensor(val) else val for key, val in
+                             model_kwargs['y'].items()}
         sample_fn = diffusion.p_sample_loop
 
         sample = sample_fn(

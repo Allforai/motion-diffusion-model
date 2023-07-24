@@ -39,7 +39,7 @@ def render(npydata, frames_folder, *, mode, faces_path, gt=False,
     if mode == "video":
         if always_on_floor:
             frames_folder += "_of"
-        os.makedirs(frames_folder, exist_ok=True)
+        # os.makedirs(frames_folder, exist_ok=True)
         # if it is a mesh, it is already downsampled
         if downsample and not is_mesh:
             npydata = npydata[::8]

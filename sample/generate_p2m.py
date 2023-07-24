@@ -74,7 +74,7 @@ def main():
 
 
     print("Loading Dataset")
-    data = HumanML3D(datapath='dataset/p2m_humanml_opt.txt')
+    data = HumanML3D(datapath='dataset/p2m_humanml_opt.txt', split='test')
     train_loader = DataLoader(data, batch_size=1, shuffle=True, num_workers=8)
     # data = load_dataset(args, max_frames, n_frames)
     total_num_samples = args.num_samples * args.num_repetitions
@@ -93,7 +93,7 @@ def main():
 
     if is_using_data:
         iterator = iter(data)
-        _, model_kwargs = next(iterator)
+        source, model_kwargs = next(iterator)
     else:
         collate_args = [{'inp': torch.zeros(n_frames), 'tokens': None, 'lengths': n_frames}] * args.num_samples
         is_t2m = any([args.input_text, args.text_prompt])
@@ -106,9 +106,10 @@ def main():
             collate_args = [dict(arg, action=one_action, action_text=one_action_text) for
                             arg, one_action, one_action_text in zip(collate_args, action, action_text)]
 
-        _, model_kwargs = collate(collate_args)
+        source, model_kwargs = collate(collate_args)
 
     all_motions = []
+    all_motions_gt = []
     all_lengths = []
     all_text = []
 
@@ -119,11 +120,12 @@ def main():
         if args.guidance_param != 1:
             model_kwargs['y']['scale'] = torch.ones(args.batch_size, device=dist_util.dev()) * args.guidance_param
         model_kwargs['y'] = {key: val.to(dist_util.dev()) if torch.is_tensor(val) else val for key, val in model_kwargs['y'].items()}
+        source = source.to(dist_util.dev())
         if len(model_kwargs['y']['pose_feature'].shape) == 2:
             model_kwargs['y']['pose_feature'] = model_kwargs['y']['pose_feature'].unsqueeze(0)
         sample_fn = diffusion.p_sample_loop
 
-        sample = sample_fn(
+        final = sample_fn(
             model,
             # (args.batch_size, model.njoints, model.nfeats, n_frames),  # BUG FIX - this one caused a mismatch between training and inference
             (args.batch_size, model.njoints, model.nfeats, max_frames),  # BUG FIX
@@ -136,6 +138,7 @@ def main():
             noise=None,
             const_noise=False,
         )
+        sample = final['pred_xstart']
 
         # Recover XYZ *positions* from HumanML3D vector representation
         if model.data_rep == 'hml_vec':
@@ -155,23 +158,28 @@ def main():
         vertices = smplh(1, pose,
                          trans).cpu().numpy()
 
+        source = source.unsqueeze(0)
+        trans_gt = source[:, 0:3].permute(0, 3, 2, 1)
+        trans_gt = inverse(trans_gt)
+        pose_gt = source[:, 3:].permute(0, 3, 2, 1).reshape(1, 64, -1, 6)
+        vertices_gt = smplh(1, pose_gt,
+                         trans_gt).cpu().numpy()
         all_motions.append(vertices)
+        all_motions_gt.append(vertices_gt)
     all_motions = np.concatenate(all_motions, axis=0)
     all_motions = all_motions[:total_num_samples]  # [bs, njoints, 6, seqlen]
+    all_motions_gt = np.concatenate(all_motions_gt, axis=0)
+    all_motions_gt = all_motions_gt[:total_num_samples]  # [bs, njoints, 6, seqlen]
 
     if os.path.exists(out_path):
         shutil.rmtree(out_path)
     os.makedirs(out_path)
 
     npy_path = os.path.join(out_path, 'results.npy')
+    npy_path_gt = os.path.join(out_path, 'gt_results.npy')
     print(f"saving results file to [{npy_path}]")
-    np.save(npy_path,
-            {'motion': all_motions, 'text': all_text, 'lengths': all_lengths,
-             'num_samples': args.num_samples, 'num_repetitions': args.num_repetitions})
-    with open(npy_path.replace('.npy', '.txt'), 'w') as fw:
-        fw.write('\n'.join(all_text))
-    with open(npy_path.replace('.npy', '_len.txt'), 'w') as fw:
-        fw.write('\n'.join([str(l) for l in all_lengths]))
+    np.save(npy_path, all_motions)
+    np.save(npy_path_gt, all_motions_gt)
 
     print(f"saving visualizations to [{out_path}]...")
     skeleton = paramUtil.kit_kinematic_chain if args.dataset == 'kit' else paramUtil.t2m_kinematic_chain
