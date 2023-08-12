@@ -1,16 +1,11 @@
 import argparse
 import logging
-
-# import matplotlib
+from data_loaders.p2m.dataset import HumanML3D
+from torch.utils.data import DataLoader
 logger = logging.getLogger(__name__)
 import os
 import sys
-# from data_loaders import tensors
-# print(sys.path)
-# sys.path.append('/mnt/disk_1/jinpeng/motion-diffusion-model/visualize')
-# print(sys.path)
-
-# import render
+import numpy as np
 
 def parse_args():
     parser = argparse.ArgumentParser()
@@ -50,12 +45,10 @@ def render_cli(path, output, mode, downsample):
 
 
 if __name__ == '__main__':
-    # args = parse_args()
+    a = np.load('/mnt/disk_1/jinpeng/motion-diffusion-model/dataset/debug/data_dict.npy',
+                allow_pickle=True).item()
     mode = "video"
     output = './compare/crab_walk'
-    print(os.path.abspath(__file__))
-    rootPath = os.path.dirname(os.path.abspath(__file__))
-    sys.path.append(rootPath)
     render_cli(
         path='/mnt/disk_1/jinpeng/motion-diffusion-model/wenxun/crab_walk_smplh.npy',
         output=output, downsample=False, mode=mode)

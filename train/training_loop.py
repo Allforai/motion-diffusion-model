@@ -8,7 +8,7 @@ import numpy as np
 import blobfile as bf
 import torch
 from torch.optim import AdamW
-
+from torch.utils.data import DataLoader
 from diffusion import logger
 from utils import dist_util
 from diffusion.fp16_util import MixedPrecisionTrainer
@@ -18,7 +18,7 @@ from diffusion.resample import create_named_schedule_sampler
 from data_loaders.humanml.networks.evaluator_wrapper import EvaluatorMDMWrapper
 from eval import eval_humanml, eval_humanact12_uestc
 from data_loaders.get_data import get_dataset_loader
-
+from data_loaders.p2m.dataset import HumanML3D
 
 # For ImageNet experiments, this was a good default value.
 # We found that the lg_loss_scale quickly climbed to
@@ -60,8 +60,8 @@ class TrainLoop:
             use_fp16=self.use_fp16,
             fp16_scale_growth=self.fp16_scale_growth,
         )
-
         self.save_dir = args.save_dir
+        self.writer = SummaryWriter(self.save_dir)
         self.overwrite = args.overwrite
 
         self.opt = AdamW(
@@ -97,6 +97,10 @@ class TrainLoop:
                     args.eval_num_samples, scale=1.,
                 )
             }
+        elif self.cond_mode=='p2m' and args.eval_during_training:
+            self.test_data = HumanML3D(datapath='dataset/p2m_humanml_opt.txt', split='test')
+            self.test_loader = DataLoader(self.test_data, batch_size=args.batch_size, shuffle=False, num_workers=8, drop_last=True)
+
         self.use_ddp = False
         self.ddp_model = self.model
 
@@ -125,7 +129,6 @@ class TrainLoop:
             self.opt.load_state_dict(state_dict)
 
     def run_loop(self):
-        writer = SummaryWriter(self.save_dir)
         for epoch in range(self.num_epochs):
             print(f'Starting epoch {epoch}')
             for motion, cond in self.data:
@@ -138,15 +141,20 @@ class TrainLoop:
                 if self.step % self.log_interval == 0:
                     for k, v in logger.get_current().name2val.items():
                         if k == 'loss':
-                            writer.add_scalars('Training',
-                                               {'Training': v},
-                                               self.step+self.resume_step)
+                            self.writer.add_scalars('Training',
+                                                    {'Training': v},
+                                                    self.step+self.resume_step)
                             print('step[{}]: loss[{:0.5f}]'.format(self.step+self.resume_step, v))
 
                         if k in ['step', 'samples'] or '_q' in k:
                             continue
                         else:
                             self.train_platform.report_scalar(name=k, value=v, iteration=self.step, group_name='Loss')
+
+                if self.step % self.log_interval == 0:
+                    self.model.eval()
+                    self.evaluate()
+                    self.model.train()
 
                 if self.step % self.save_interval == 0:
                     self.save()
@@ -164,11 +172,23 @@ class TrainLoop:
         if (self.step - 1) % self.save_interval != 0:
             self.save()
             self.evaluate()
-        writer.flush()
+        self.writer.flush()
 
     def evaluate(self):
         if not self.args.eval_during_training:
             return
+        if self.cond_mode == 'p2m':
+            loss_test = 0
+            with torch.no_grad():
+                for motion, cond in self.test_loader:
+                    motion = motion.to(self.device)
+                    cond['y'] = {key: val.to(self.device) if torch.is_tensor(val) else val for key, val in
+                                 cond['y'].items()}
+                    loss_test += self.test_step(motion, cond)
+            print('step[{}]: testing loss[{:0.5f}]'.format(self.step + self.resume_step, loss_test / len(self.test_loader)))
+            self.writer.add_scalars('Testing',
+                                    {'Testing': loss_test / len(self.test_loader)},
+                                    self.step + self.resume_step)
         start_eval = time.time()
         if self.eval_wrapper is not None:
             print('Running evaluation loop: [Should take about 90 min]')
@@ -205,6 +225,31 @@ class TrainLoop:
         end_eval = time.time()
         print(f'Evaluation time: {round(end_eval-start_eval)/60}min')
 
+    def test_step(self, batch, cond):
+        for i in range(0, batch.shape[0], self.microbatch):
+            # Eliminates the microbatch feature
+            assert i == 0
+            assert self.microbatch == self.batch_size
+            micro = batch
+            micro_cond = cond
+            last_batch = (i + self.microbatch) >= batch.shape[0]
+            t, weights = self.schedule_sampler.sample(micro.shape[0], dist_util.dev())
+
+            compute_losses = functools.partial(
+                self.diffusion.training_losses,
+                self.ddp_model,
+                micro,  # [bs, ch, image_size, image_size]
+                t,  # [bs](int) sampled timesteps
+                model_kwargs=micro_cond,
+                dataset=self.data.dataset
+            )
+
+            if last_batch or not self.use_ddp:
+                losses = compute_losses()
+            else:
+                with self.ddp_model.no_sync():
+                    losses = compute_losses()
+        return losses["loss"].mean()
 
     def run_step(self, batch, cond):
         self.forward_backward(batch, cond)

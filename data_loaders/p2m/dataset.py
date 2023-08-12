@@ -11,55 +11,6 @@ from .geometry import axis_angle_to_matrix, matrix_to_axis_angle
 from einops import rearrange
 
 
-#
-# class Pose2MotionDataset(data.dataset):
-#     def __init__(self, opt, split_file):
-#         self.opt = opt
-#         self.motion_length = opt.max_motion_length
-#
-#         data_dict = {}
-#         id_list = []
-#         with cs.open(split_file, 'r') as f:
-#             for line in f.readlines():
-#                 id_list.append(line.strip())
-#
-#         new_name_list = []
-#         length_list = []
-#         for name in tqdm(id_list):
-#             try:
-#                 motion = np.load(pjoin(opt.motion_dir, name + '.npy'))
-#                 if len(motion) < self.motion_length:
-#                     continue
-#                 motion = smpl_data_to_matrix_and_trans(motion)
-#
-#                 data_dict[name] = {'motion': motion,
-#                                    'length': len(motion['features'])}
-#                 new_name_list.append(name)
-#                 length_list.append(len(motion))
-#             except:
-#                 pass
-#
-#         name_list, length_list = zip(*sorted(zip(new_name_list, length_list), key=lambda x: x[1]))
-#
-#         self.length_arr = np.array(length_list)
-#         self.data_dict = data_dict
-#         self.name_list = name_list
-#
-#     def __len__(self):
-#         return len(self.data_dict)
-#
-#     def __getitem__(self, item):
-#         data = self.data_dict[self.name_list[item]]
-#         motion, m_length = data['motion'], data['length']
-#
-#         idx = random.randint(0, len(motion) - self.motion_length)
-#         features = motion['features'][idx:idx + self.min_motion_len]
-#         pose_feature = motion['pose_feature'][idx:idx + self.min_motion_len]
-#         trans_feature = motion['trans_feature'][idx:idx + self.min_motion_len]
-#
-#         return {'features': features, 'pose_feature': pose_feature, 'trans_feature': trans_feature, 'length': m_length}
-
-
 class HumanML3D(data.Dataset):
     def __init__(self, datapath='./dataset/humanml_opt.txt', split="train"):
         self.dataset_name = 'p2m'
@@ -113,6 +64,7 @@ class HumanML3D(data.Dataset):
                                      allow_pickle=True)
             self.length_list = np.load('/mnt/disk_1/jinpeng/motion-diffusion-model/dataset/debug/length_list.npy',
                                        allow_pickle=True)
+            print('Training mode')
         else:
             self.min_motion_len = 64  # data length
             self.data_dict = np.load('/mnt/disk_1/jinpeng/motion-diffusion-model/dataset/debug/data_dict_test.npy',
@@ -121,6 +73,7 @@ class HumanML3D(data.Dataset):
                                      allow_pickle=True)
             self.length_list = np.load('/mnt/disk_1/jinpeng/motion-diffusion-model/dataset/debug/length_list_test.npy',
                                        allow_pickle=True)
+            print('Evaluating mode')
         # self.length_arr = np.array(length_list)
         # self.data_dict = data_dict
         # self.name_list = name_list

@@ -1247,7 +1247,7 @@ class GaussianDiffusion:
                                              # jointstype='vertices',  # 3.4 iter/sec # USED ALSO IN MotionCLIP
                                              jointstype='smpl',  # 3.4 iter/sec
                                              vertstrans=False)
-
+        # ROT6d + spped_rot6d + xyz
         if model_kwargs is None:
             model_kwargs = {}
         if noise is None:
