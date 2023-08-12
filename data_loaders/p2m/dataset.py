@@ -89,20 +89,21 @@ class HumanML3D(data.Dataset):
 
         # new_name_list = []
         # length_list = []
+        # text_data = []
         # for name in tqdm(id_list):
         #     try:
         #         motion = np.load(pjoin(opt.motion_dir, name + '.npy'), allow_pickle=True).item()
         #         if len(motion['trans']) < self.motion_length:
         #             continue
-        #         motion = smpl_data_to_matrix_and_trans(motion)
+        #         # text_data = []
+        #         # motion = smpl_data_to_matrix_and_trans(motion)
         #
-        #         data_dict[name] = {'motion': motion,
-        #                            'length': len(motion['features'])}
+        #         # data_dict[name] = {'motion': motion,
+        #         #                    'length': len(motion['features'])}
         #         new_name_list.append(name)
-        #         length_list.append(len(motion['features']))
+        #         # length_list.append(len(motion['features']))
         #     except:
         #         pass
-
         # name_list, length_list = zip(*sorted(zip(new_name_list, length_list), key=lambda x: x[1]))
         if split == 'train':
             self.min_motion_len = 64  # data length
@@ -141,7 +142,7 @@ class HumanML3D(data.Dataset):
         # 'pose_feature': pose_feature, 'trans_feature': trans_feature, 'length': m_length}
         return features.type(torch.float32), {
             'y': {'pose_feature': pose_feature.type(torch.float32), 'lengths': 64 * torch.ones(1).type(torch.IntTensor),
-                  'mask': torch.ones(64, dtype=bool)}}
+                  'mask': torch.ones(64, dtype=bool), 'key_id': self.name_list[item]}}
 
     def __len__(self):
         return len(self.data_dict)

@@ -24,7 +24,7 @@ from data_loaders.get_data import get_dataset_loader
 # We found that the lg_loss_scale quickly climbed to
 # 20-21 within the first ~1K steps of training.
 INITIAL_LOG_LOSS_SCALE = 20.0
-
+from torch.utils.tensorboard import SummaryWriter
 
 class TrainLoop:
     def __init__(self, args, train_platform, model, diffusion, data):
@@ -125,7 +125,7 @@ class TrainLoop:
             self.opt.load_state_dict(state_dict)
 
     def run_loop(self):
-
+        writer = SummaryWriter(self.save_dir)
         for epoch in range(self.num_epochs):
             print(f'Starting epoch {epoch}')
             for motion, cond in self.data:
@@ -138,6 +138,9 @@ class TrainLoop:
                 if self.step % self.log_interval == 0:
                     for k, v in logger.get_current().name2val.items():
                         if k == 'loss':
+                            writer.add_scalars('Training',
+                                               {'Training': v},
+                                               self.step+self.resume_step)
                             print('step[{}]: loss[{:0.5f}]'.format(self.step+self.resume_step, v))
 
                         if k in ['step', 'samples'] or '_q' in k:
@@ -161,6 +164,7 @@ class TrainLoop:
         if (self.step - 1) % self.save_interval != 0:
             self.save()
             self.evaluate()
+        writer.flush()
 
     def evaluate(self):
         if not self.args.eval_during_training:

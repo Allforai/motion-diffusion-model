@@ -29,10 +29,10 @@ def render_cli(path, output, mode, downsample):
     init = True
     import numpy as np
     from visualize.render.blender import render
-    data = np.load(path).squeeze(0)
+    data = np.load(path)[0]
     if not os.path.exists(output):
-        os.system(r"touch {}".format(output))
-    vid_path = path.replace(".npy", ".mp4")
+        # os.system(r"touch {}".format(output))
+        os.makedirs(output, mode=0o777)
 
     frames_folder = render(data, frames_folder=output,
                            denoising=True,
@@ -52,10 +52,10 @@ def render_cli(path, output, mode, downsample):
 if __name__ == '__main__':
     # args = parse_args()
     mode = "video"
-    output = './compare/gt_results'
+    output = './compare/crab_walk'
     print(os.path.abspath(__file__))
     rootPath = os.path.dirname(os.path.abspath(__file__))
     sys.path.append(rootPath)
     render_cli(
-        path='/mnt/disk_1/jinpeng/motion-diffusion-model/save/p2m_humanml_trans_enc_512_126_temos/samples_p2m_humanml_trans_enc_512_126_temos_000050000_seed10_the_person_walked_forward_and_is_picking_up_his_toolbox/gt_results.npy',
+        path='/mnt/disk_1/jinpeng/motion-diffusion-model/wenxun/crab_walk_smplh.npy',
         output=output, downsample=False, mode=mode)
