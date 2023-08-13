@@ -75,8 +75,9 @@ def main():
         gender='neutral').to(dist_util.dev()).eval()
     all_motions = []
     all_motions_gt = []
-    for file in tqdm(range(len(data))):
-        source, model_kwargs = next(iterator)
+    for file in tqdm(range(100)):
+        for i in range(100):
+            source, model_kwargs = next(iterator)
 
         for rep_i in range(args.num_repetitions):
             print(f'### Sampling [repetitions #{rep_i}]')
@@ -122,11 +123,11 @@ def main():
     all_motions_gt = np.concatenate(all_motions_gt, axis=0)
 
     if os.path.exists(out_path):
-        shutil.rmtree(out_path)
-    os.makedirs(out_path)
+    #     shutil.rmtree(out_path)
+        os.makedirs(out_path)
 
-    npy_path = os.path.join(out_path, 'train_results.npy')
-    npy_path_gt = os.path.join(out_path, 'train_gt_results.npy')
+    npy_path = os.path.join(out_path, 'train_codetest.npy')
+    npy_path_gt = os.path.join(out_path, 'train_codetest_gt.npy')
     print(f"saving results file to [{npy_path}]")
     np.save(npy_path, all_motions)
     np.save(npy_path_gt, all_motions_gt)

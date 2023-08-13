@@ -93,6 +93,8 @@ def add_model_options(parser):
     group.add_argument("--unconstrained", action='store_true',
                        help="Model is trained unconditionally. That is, it is constrained by neither text nor action. "
                             "Currently tested on HumanAct12 only.")
+    group.add_argument("--cond_mode", required=True, type=str, default="p2mcross",
+                       help="condition mode")
 
 
 
@@ -126,7 +128,7 @@ def add_training_options(parser):
                        help="Number of repetitions for evaluation loop during training.")
     group.add_argument("--eval_num_samples", default=1_000, type=int,
                        help="If -1, will use all samples in the specified split.")
-    group.add_argument("--log_interval", default=1_000, type=int,
+    group.add_argument("--log_interval", default=1_00, type=int,
                        help="Log losses each N steps")
     group.add_argument("--save_interval", default=50_000, type=int,
                        help="Save checkpoints and run evaluation each N steps")
@@ -206,6 +208,8 @@ def get_cond_mode(args):
         cond_mode = 'no_cond'
     elif args.dataset in ['kit', 'humanml']:
         cond_mode = 'text'
+    elif args.dataset in ['p2m'] and args.cond_mode == 'cross':
+        cond_mode = 'p2mcross'
     elif args.dataset in ['p2m']:
         cond_mode = 'p2m'
     return cond_mode

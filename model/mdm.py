@@ -91,11 +91,15 @@ class MDM(nn.Module):
             if 'action' in self.cond_mode:
                 self.embed_action = EmbedAction(self.num_actions, self.latent_dim)
                 print('EMBED ACTION')
-            if 'p2m' in self.cond_mode:
+            if 'p2m' == self.cond_mode:
                 self.embed_pose = nn.Linear(256, self.latent_dim)
                 self.temos_encoder = self.load_and_freeze_temos()
                 self.orient = nn.Linear(126, 135)
                 print('EMBED POSE')
+            if 'p2mcross' == self.cond_mode:
+                self.embed_pose = nn.Linear(126, self.latent_dim)
+                print('Cross Mode EMBED POSE')
+
 
 
 
@@ -121,7 +125,7 @@ class MDM(nn.Module):
         return clip_model
 
     def mask_cond(self, cond, force_mask=False):
-        bs, d = cond.shape
+        bs = cond.shape[0]
         if force_mask:
             return torch.zeros_like(cond)
         elif self.training and self.cond_mask_prob > 0.:
@@ -178,7 +182,10 @@ class MDM(nn.Module):
         if 'action' in self.cond_mode:
             action_emb = self.embed_action(y['action'])
             emb += self.mask_cond(action_emb, force_mask=force_mask)
-        if 'p2m' in self.cond_mode:
+        if 'p2mcross' == self.cond_mode:
+            emb += self.embed_pose(
+                self.mask_cond(y['pose_feature'].reshape(bs, -1), force_mask=force_mask).reshape(bs, -1, 126).permute(1, 0, 2))
+        if 'p2m' == self.cond_mode:
             enc_pose = self.encode_pose(y['pose_feature'])
             emb += self.embed_pose(self.mask_cond(enc_pose, force_mask=force_mask))
 
@@ -192,10 +199,17 @@ class MDM(nn.Module):
         x = self.input_process(x)
 
         if self.arch == 'trans_enc':
-            # adding the timestep embed
-            xseq = torch.cat((emb, x), axis=0)  # [seqlen+1, bs, d]
-            xseq = self.sequence_pos_encoder(xseq)  # [seqlen+1, bs, d]
-            output = self.seqTransEncoder(xseq)[1:]  # , src_key_padding_mask=~maskseq)  # [seqlen, bs, d]
+            if 'p2mcross' in self.cond_mode:
+                # adding the timestep embed
+                xseq = torch.cat((emb, x), axis=0)  # [seqlen+8, bs, d]
+                xseq = self.sequence_pos_encoder(xseq)  # [seqlen+8, bs, d]
+                output = self.seqTransEncoder(xseq)[8:]  # , src_key_padding_mask=~maskseq)  # [seqlen, bs, d]
+            else:
+                # adding the timestep embed
+                xseq = torch.cat((emb, x), axis=0)  # [seqlen+1, bs, d]
+                xseq = self.sequence_pos_encoder(xseq)  # [seqlen+1, bs, d]
+                output = self.seqTransEncoder(xseq)[1:]  # , src_key_padding_mask=~maskseq)  # [seqlen, bs, d]
+
 
         elif self.arch == 'trans_dec':
             if self.emb_trans_dec:

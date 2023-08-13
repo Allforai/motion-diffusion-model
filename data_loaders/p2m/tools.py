@@ -65,11 +65,11 @@ def inverse(trans_feature):
     vel_trajectory = trans_feature[..., 1:3]
 
     # integrate the trajectory
-    trajectory = torch.cumsum(vel_trajectory, dim=-2)
+    trajectory = torch.cumsum(vel_trajectory.squeeze(-2), dim=-2)
     # First frame should be 0, but if infered it is better to ensure it
     trajectory = trajectory - trajectory[..., [0], :]
 
     # Get back the translation
-    trans = torch.cat([trajectory, root_y[..., None]], dim=-1)
+    trans = torch.cat([trajectory.unsqueeze(2), root_y[..., None]], dim=-1)
 
     return trans

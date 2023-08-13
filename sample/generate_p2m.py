@@ -148,9 +148,9 @@ def main():
     all_motions = np.concatenate(all_motions, axis=0)
     all_motions_gt = np.concatenate(all_motions_gt, axis=0)
 
-    if os.path.exists(out_path):
-        shutil.rmtree(out_path)
-    os.makedirs(out_path)
+    # if os.path.exists(out_path):
+    #     shutil.rmtree(out_path)
+    # os.makedirs(out_path)
 
     npy_path = os.path.join(out_path, 'test_results.npy')
     npy_path_gt = os.path.join(out_path, 'test_gt_results.npy')

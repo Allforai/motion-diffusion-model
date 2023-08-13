@@ -97,7 +97,7 @@ class TrainLoop:
                     args.eval_num_samples, scale=1.,
                 )
             }
-        elif self.cond_mode=='p2m' and args.eval_during_training:
+        elif 'p2m' in self.cond_mode and args.eval_during_training:
             self.test_data = HumanML3D(datapath='dataset/p2m_humanml_opt.txt', split='test')
             self.test_loader = DataLoader(self.test_data, batch_size=args.batch_size, shuffle=False, num_workers=8, drop_last=True)
 
@@ -129,6 +129,7 @@ class TrainLoop:
             self.opt.load_state_dict(state_dict)
 
     def run_loop(self):
+        print('eval_during_training:' + str(self.args.eval_during_training))
         for epoch in range(self.num_epochs):
             print(f'Starting epoch {epoch}')
             for motion, cond in self.data:
@@ -177,7 +178,7 @@ class TrainLoop:
     def evaluate(self):
         if not self.args.eval_during_training:
             return
-        if self.cond_mode == 'p2m':
+        if 'p2m' in self.cond_mode:
             loss_test = 0
             with torch.no_grad():
                 for motion, cond in self.test_loader:
