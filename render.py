@@ -1,11 +1,12 @@
 import argparse
 import logging
-from data_loaders.p2m.dataset import HumanML3D
-from torch.utils.data import DataLoader
+
+
 logger = logging.getLogger(__name__)
-import os
-import sys
+# import matplotlib
 import numpy as np
+import os
+
 
 def parse_args():
     parser = argparse.ArgumentParser()
@@ -20,14 +21,14 @@ def parse_args():
     return args
 
 
-def render_cli(path, output, mode, downsample):
+def render_cli(data, output, mode, downsample):
     init = True
     import numpy as np
     from visualize.render.blender import render
-    data = np.load(path)[0]
-    if not os.path.exists(output):
-        # os.system(r"touch {}".format(output))
-        os.makedirs(output, mode=0o777)
+    # data = np.load(path)[0]
+    # if not os.path.exists(output):
+    #     # os.system(r"touch {}".format(output))
+    #     os.makedirs(output, mode=0o777)
 
     frames_folder = render(data, frames_folder=output,
                            denoising=True,
@@ -40,15 +41,35 @@ def render_cli(path, output, mode, downsample):
                            always_on_floor=False,
                            init=init,
                            gt=False)
-    print(frames_folder)
     init = False
 
 
 if __name__ == '__main__':
-    a = np.load('/mnt/disk_1/jinpeng/motion-diffusion-model/dataset/debug/data_dict.npy',
-                allow_pickle=True).item()
-    mode = "video"
-    output = './compare/crab_walk'
-    render_cli(
-        path='/mnt/disk_1/jinpeng/motion-diffusion-model/wenxun/crab_walk_smplh.npy',
-        output=output, downsample=False, mode=mode)
+
+    ### Testing set
+    # pr = np.load('/mnt/disk_1/jinpeng/motion-diffusion-model/save/p2m_temos_0812_test_loss'
+    #              '/samples_p2m_temos_0812_test_loss_000100000_seed10/test_results.npy',
+    #              allow_pickle=True)
+    # gt = np.load('/mnt/disk_1/jinpeng/motion-diffusion-model/save/p2m_temos_0812_test_loss'
+    #              '/samples_p2m_temos_0812_test_loss_000100000_seed10/test_gt_results.npy', allow_pickle=True)
+    # namelist = np.load('/mnt/disk_1/jinpeng/motion-diffusion-model/dataset/namelist.npy', allow_pickle=True)
+
+    ### Training set
+    pr = np.load('/mnt/disk_1/jinpeng/motion-diffusion-model/save/p2m_temos_0812_test_loss'
+                 '/samples_p2m_temos_0812_test_loss_000100000_seed10/test_results.npy',
+                 allow_pickle=True)
+    gt = np.load('/mnt/disk_1/jinpeng/motion-diffusion-model/save/p2m_temos_0812_test_loss'
+                 '/samples_p2m_temos_0812_test_loss_000100000_seed10/test_gt_results.npy', allow_pickle=True)
+    namelist = np.load('/mnt/disk_1/jinpeng/motion-diffusion-model/dataset/namelist.npy', allow_pickle=True)
+
+    mode = "sequence"
+    output = "/mnt/disk_1/jinpeng/motion-diffusion-model/0813_pr"
+    for i, file in enumerate(range(len(namelist))):
+        render_cli(
+            data=pr[file],
+            output=os.path.join(output, namelist[file]), downsample=False, mode=mode)
+    output_gt = "/mnt/disk_1/jinpeng/motion-diffusion-model/0813_gt"
+    for i, file in enumerate(range(len(namelist))):
+        render_cli(
+            data=gt[file],
+            output=os.path.join(output_gt, namelist[file]), downsample=False, mode=mode)

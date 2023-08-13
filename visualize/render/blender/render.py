@@ -99,7 +99,7 @@ def render(npydata, frames_folder, *, mode, faces_path, gt=False,
     imported_obj_names = []
     for index, frameidx in enumerate(frameidx):
         if mode == "sequence":
-            frac = index / (nframes_to_render - 1)
+            frac = index  # colormap predefined
             mat = data.get_sequence_mat(frac)
         else:
             mat = data.mat

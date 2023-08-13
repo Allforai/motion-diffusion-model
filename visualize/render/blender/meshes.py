@@ -1,7 +1,6 @@
 import numpy as np
 
 from .materials import body_material
-
 # green
 # GT_SMPL = body_material(0.009, 0.214, 0.029)
 GT_SMPL = body_material(0.035, 0.415, 0.122)
@@ -28,15 +27,10 @@ class Meshes:
             self.mat = GT_SMPL
         else:
             self.mat = GEN_SMPL
+        self.colormap = np.load('/mnt/disk_1/jinpeng/motion-diffusion-model/dataset/colormap.npy', allow_pickle=True)
 
     def get_sequence_mat(self, frac):
-        import matplotlib
-        cmap = matplotlib.cm.get_cmap('Blues')
-        # begin = 0.60
-        # end = 0.90
-        begin = 0.50
-        end = 0.90
-        rgbcolor = cmap(begin + (end-begin)*frac)
+        rgbcolor = self.colormap[frac * 8]
         mat = body_material(*rgbcolor, oldrender=self.oldrender)
         return mat
 
