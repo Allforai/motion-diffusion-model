@@ -34,6 +34,7 @@ def main():
     name = os.path.basename(os.path.dirname(args.model_path))
     niter = os.path.basename(args.model_path).replace('model', '').replace('.pt', '')
     dist_util.setup_dist(args.device)
+
     if out_path == '':
         out_path = os.path.join(os.path.dirname(args.model_path),
                                 'samples_{}_{}_seed{}'.format(name, niter, args.seed))
@@ -41,7 +42,11 @@ def main():
             out_path += '_' + args.text_prompt.replace(' ', '_').replace('.', '')
         elif args.input_text != '':
             out_path += '_' + os.path.basename(args.input_text).replace('.txt', '').replace(' ', '_').replace('.', '')
-
+    if not os.path.exists(out_path):
+    #     shutil.rmtree(out_path)
+        os.makedirs(out_path)
+        print("Creating Out Path")
+        print(out_path)
     assert args.num_samples <= args.batch_size, \
         f'Please either increase batch_size({args.batch_size}) or reduce num_samples({args.num_samples})'
     # So why do we need this check? In order to protect GPU from a memory overload in the following line.
@@ -122,9 +127,7 @@ def main():
     all_motions = np.concatenate(all_motions, axis=0)
     all_motions_gt = np.concatenate(all_motions_gt, axis=0)
 
-    if os.path.exists(out_path):
-    #     shutil.rmtree(out_path)
-        os.makedirs(out_path)
+
 
     npy_path = os.path.join(out_path, 'train_codetest.npy')
     npy_path_gt = os.path.join(out_path, 'train_codetest_gt.npy')

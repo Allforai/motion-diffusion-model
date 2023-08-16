@@ -183,7 +183,7 @@ class MDM(nn.Module):
             action_emb = self.embed_action(y['action'])
             emb += self.mask_cond(action_emb, force_mask=force_mask)
         if 'p2mcross' == self.cond_mode:
-            emb += self.embed_pose(
+            emb = emb.repeat(8, 1, 1) + self.embed_pose(
                 self.mask_cond(y['pose_feature'].reshape(bs, -1), force_mask=force_mask).reshape(bs, -1, 126).permute(1, 0, 2))
         if 'p2m' == self.cond_mode:
             enc_pose = self.encode_pose(y['pose_feature'])

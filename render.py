@@ -23,7 +23,8 @@ def parse_args():
 
 def render_cli(data, output, mode, downsample):
     init = True
-    import numpy as np
+    # import numpy as np
+    print("Begining Rendering")
     from visualize.render.blender import render
     # data = np.load(path)[0]
     # if not os.path.exists(output):
@@ -47,29 +48,34 @@ def render_cli(data, output, mode, downsample):
 if __name__ == '__main__':
 
     ## Testing set
-    # pr = np.load('/mnt/disk_1/jinpeng/motion-diffusion-model/save/p2m_temos_0812_test_loss'
-    #              '/samples_p2m_temos_0812_test_loss_000100000_seed10/test_results.npy',
+    # pr = np.load('/mnt/disk_1/jinpeng/motion-diffusion-model/save/0813_cross/samples_0813_cross_000300000_seed10'
+    #              '/test_results.npy',
     #              allow_pickle=True)
-    gt = np.load('/mnt/disk_1/jinpeng/motion-diffusion-model/save/p2m_temos_0812_test_loss'
-                 '/samples_p2m_temos_0812_test_loss_000100000_seed10/test_gt_results.npy', allow_pickle=True)
-    namelist = np.load('/mnt/disk_1/jinpeng/motion-diffusion-model/dataset/namelist.npy', allow_pickle=True)
-
-    ### Training Code test set
-    # pr = np.load('/mnt/disk_1/jinpeng/motion-diffusion-model/save/p2m_temos_0812_test_loss'
-    #              '/samples_p2m_temos_0812_test_loss_000100000_seed10/train_codetest.npy',
-    #              allow_pickle=True)
-    # gt = np.load('/mnt/disk_1/jinpeng/motion-diffusion-model/save/p2m_temos_0812_test_loss'
-    #              '/samples_p2m_temos_0812_test_loss_000100000_seed10/train_codetest_gt.npy', allow_pickle=True)
-    # namelist = np.load('/mnt/disk_1/jinpeng/motion-diffusion-model/dataset/namelist_train_codetest_0813.npy', allow_pickle=True)
-
-    mode = "sequence"
-    # output = "/mnt/disk_1/jinpeng/motion-diffusion-model/0813_codetest_pr"
+    # gt = np.load('/mnt/disk_1/jinpeng/motion-diffusion-model/save/0813_cross/samples_0813_cross_000300000_seed10'
+    #              '/test_gt_results.npy', allow_pickle=True)
+    # namelist = np.load('/mnt/disk_1/jinpeng/motion-diffusion-model/dataset/namelist.npy', allow_pickle=True)
+    #
+    # ## Training Code test set
+    # # pr = np.load('/mnt/disk_1/jinpeng/motion-diffusion-model/save/p2m_temos_0812_test_loss'
+    # #              '/samples_p2m_temos_0812_test_loss_000100000_seed10/train_codetest.npy',
+    # #              allow_pickle=True)
+    # # print("Rendering")
+    # # gt = np.load('/mnt/disk_1/jinpeng/motion-diffusion-model/save/p2m_temos_0812_test_loss'
+    # #              '/samples_p2m_temos_0812_test_loss_000100000_seed10/train_codetest_gt.npy', allow_pickle=True)
+    # # namelist = np.load('/mnt/disk_1/jinpeng/motion-diffusion-model/dataset/namelist_train_codetest_0813.npy', allow_pickle=True)
+    #
+    # mode = "sequence"
+    # output = "/mnt/disk_1/jinpeng/motion-diffusion-model/0814_cross_test_pr"
     # for i, file in enumerate(range(len(namelist))):
     #     render_cli(
     #         data=pr[file],
     #         output=os.path.join(output, namelist[file]), downsample=False, mode=mode)
-    output_gt = "/mnt/disk_1/jinpeng/motion-diffusion-model/0813_gt"
-    for i, file in enumerate(range(500, len(namelist))):
-        render_cli(
-            data=gt[file],
-            output=os.path.join(output_gt, namelist[file]), downsample=False, mode=mode)
+    # output_gt = "/mnt/disk_1/jinpeng/motion-diffusion-model/0814_cross_test_gt"
+    # for i, file in enumerate(range(len(namelist))):
+    #     render_cli(
+    #         data=gt[file],
+    #         output=os.path.join(output_gt, namelist[file]), downsample=False, mode=mode)
+    l = np.load('/mnt/disk_1/jinpeng/motion-diffusion-model/compare/handstand_gt.npy', allow_pickle=True)
+    render_cli(
+        data=l,
+        output='/mnt/disk_1/jinpeng/motion-diffusion-model/compare/handstand_gt', downsample=False, mode='video')
