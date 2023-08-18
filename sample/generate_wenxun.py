@@ -25,7 +25,7 @@ from data_loaders.tensors import collate
 from body_models.smplh import SMPLH
 from data_loaders.p2m.tools import inverse
 torch.set_default_dtype(torch.float32)
-
+from data_loaders.p2m.tools import axis_angle_to
 
 def main():
     args = generate_args()
@@ -101,62 +101,49 @@ def main():
         gender='neutral').to(dist_util.dev()).eval()
     all_motions = []
     all_motions_gt = []
-    for file in tqdm(range(len(data))):
-        source, model_kwargs = next(iterator)
 
-        for rep_i in range(args.num_repetitions):
-            print(f'### Sampling [repetitions #{rep_i}]')
 
-            # add CFG scale to batch
-            if args.guidance_param != 1:
-                model_kwargs['y']['scale'] = torch.ones(args.batch_size, device=dist_util.dev()) * args.guidance_param
-            model_kwargs['y'] = {key: val.to(dist_util.dev()) if torch.is_tensor(val) else val for key, val in
-                                 model_kwargs['y'].items()}
-            source = source.to(dist_util.dev())
-            if len(model_kwargs['y']['pose_feature'].shape) == 2:
-                model_kwargs['y']['pose_feature'] = model_kwargs['y']['pose_feature'].unsqueeze(0)
-            sample_fn = diffusion.p_sample_loop
+    for rep_i in range(args.num_repetitions):
+        print(f'### Sampling [repetitions #{rep_i}]')
+        source = torch.from_numpy(np.load('/mnt/disk_1/jinpeng/motion-diffusion-model/wenxun/waltz.npy'))
+        source = axis_angle_to("rot6d", source)
+        source = source.to(dist_util.dev())
+        sample_fn = diffusion.p_sample_loop
+        model_kwargs = {
+            'y': {'pose_feature': source[:, 1:].reshape(-1, 126)[None].type(torch.float32), 'lengths': 64 * torch.ones(1).type(torch.IntTensor),
+                  'mask': torch.ones(64, dtype=bool), 'key_id': 'waltz'}}
+        model_kwargs['y'] = {key: val.to(dist_util.dev()) if torch.is_tensor(val) else val for key, val in
+                             model_kwargs['y'].items()}
+        model_kwargs['y']['scale'] = torch.ones(args.batch_size, device=dist_util.dev()) * args.guidance_param
+        final = sample_fn(
+            model,
+            (args.batch_size, model.njoints, model.nfeats, max_frames),  # BUG FIX
+            clip_denoised=False,
+            model_kwargs=model_kwargs,
+            skip_timesteps=0,  # 0 is the default value - i.e. don't skip any step
+            init_image=None,
+            progress=True,
+            dump_steps=None,
+            noise=None,
+            const_noise=False,
+        )
+        sample = final
+        trans = sample[:, 0:3].permute(0, 3, 2, 1)
+        trans = inverse(trans)
+        pose = sample[:, 3:].permute(0, 3, 2, 1).reshape(1, 64, -1, 6)
+        vertices = smplh(1, pose,
+                         trans).cpu().numpy()
 
-            final = sample_fn(
-                model,
-                # (args.batch_size, model.njoints, model.nfeats, n_frames),  # BUG FIX - this one caused a mismatch between training and inference
-                (args.batch_size, model.njoints, model.nfeats, max_frames),  # BUG FIX
-                clip_denoised=False,
-                model_kwargs=model_kwargs,
-                skip_timesteps=0,  # 0 is the default value - i.e. don't skip any step
-                init_image=None,
-                progress=True,
-                dump_steps=None,
-                noise=None,
-                const_noise=False,
-            )
-            sample = final['pred_xstart']
-            trans = sample[:, 0:3].permute(0, 3, 2, 1)
-            trans = inverse(trans)
-            pose = sample[:, 3:].permute(0, 3, 2, 1).reshape(1, 64, -1, 6)
-            vertices = smplh(1, pose,
-                             trans).cpu().numpy()
-
-            source = source.unsqueeze(0)
-            trans_gt = source[:, 0:3].permute(0, 3, 2, 1)
-            trans_gt = inverse(trans_gt)
-            pose_gt = source[:, 3:].permute(0, 3, 2, 1).reshape(1, 64, -1, 6)
-            vertices_gt = smplh(1, pose_gt,
-                                trans_gt).cpu().numpy()
-            all_motions.append(vertices)
-            all_motions_gt.append(vertices_gt)
+        all_motions.append(vertices)
     all_motions = np.concatenate(all_motions, axis=0)
-    all_motions_gt = np.concatenate(all_motions_gt, axis=0)
 
-    if os.path.exists(out_path):
-        shutil.rmtree(out_path)
-    os.makedirs(out_path)
+    if not os.path.exists(out_path):
+        os.makedirs(out_path)
 
-    npy_path = os.path.join(out_path, 'test_results.npy')
-    npy_path_gt = os.path.join(out_path, 'test_gt_results.npy')
+    npy_path = os.path.join(out_path, 'wenxun_waltz.npy')
     print(f"saving results file to [{npy_path}]")
     np.save(npy_path, all_motions)
-    np.save(npy_path_gt, all_motions_gt)
+    # np.save(npy_path_gt, all_motions_gt)
 
 
 if __name__ == "__main__":

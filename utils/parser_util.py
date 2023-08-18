@@ -171,6 +171,7 @@ def add_generate_options(parser):
                        help="A text prompt to be generated. If empty, will take text prompts from dataset.")
     group.add_argument("--action_name", default='', type=str,
                        help="An action name to be generated. If empty, will take text prompts from dataset.")
+    group.add_argument("--replication_times", default=3, type=int)
 
 
 def add_edit_options(parser):

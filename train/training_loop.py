@@ -172,7 +172,9 @@ class TrainLoop:
         # Save the last checkpoint if it wasn't already saved.
         if (self.step - 1) % self.save_interval != 0:
             self.save()
+            self.model.eval()
             self.evaluate()
+            self.model.train()
         self.writer.flush()
 
     def evaluate(self):
@@ -235,7 +237,6 @@ class TrainLoop:
             micro_cond = cond
             last_batch = (i + self.microbatch) >= batch.shape[0]
             t, weights = self.schedule_sampler.sample(micro.shape[0], dist_util.dev())
-
             compute_losses = functools.partial(
                 self.diffusion.training_losses,
                 self.ddp_model,

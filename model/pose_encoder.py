@@ -46,15 +46,6 @@ class PoseEncoder(nn.Module):
             raise NotImplementedError
 
         self.encoder = nn.Sequential(*encoder_layers)
-        # self.sequence_pos_encoding = PositionalEncoding(512, 0.1)
-        # seq_trans_encoder_layer = nn.TransformerEncoderLayer(d_model=512,
-        #                                                      nhead=4,
-        #                                                      dim_feedforward=1024,
-        #                                                      dropout=0.1,
-        #                                                      activation="gelu")
-        #
-        # self.seqTransEncoder = nn.TransformerEncoder(seq_trans_encoder_layer,
-        #                                              num_layers=2)
 
     def forward(self, pose):
         pose_embedding = self.encoder(pose)

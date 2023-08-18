@@ -41,7 +41,7 @@ def main():
 
     print("Loading Dataset")
     data = HumanML3D(datapath='dataset/p2m_humanml_opt.txt', split='test')
-    train_loader = DataLoader(data, batch_size=args.batch_size, shuffle=True, num_workers=8)
+    train_loader = DataLoader(data, batch_size=args.batch_size, shuffle=False, num_workers=8)
 
     print("Creating model and diffusion...")
     model, diffusion = create_model_and_diffusion(args, train_loader)
@@ -59,6 +59,7 @@ def main():
         repeat_time = 'repeat_' + str(i)
         all_motions[repeat_time] = []
     all_motions_gt = []
+    pose_gt = []
     namelist = []
     for i, (source, model_kwargs) in enumerate(tqdm(train_loader)):
         # add CFG scale to batch
@@ -68,6 +69,7 @@ def main():
                              model_kwargs['y'].items()}
         source = source.to(dist_util.dev())
         all_motions_gt.append(np.split(source.cpu().numpy(), source.shape[0]))
+        pose_gt.append(np.split(model_kwargs['y']['pose_feature'].cpu().numpy(), source.shape[0]))
         namelist.append(model_kwargs['y']['key_id'])
         for rep_i in range(args.num_repetitions):
             print(f'### Sampling [repetitions #{rep_i}]')
@@ -88,15 +90,13 @@ def main():
     for i in range(args.num_repetitions):
         all_motions['repeat_' + str(i)] = np.concatenate(all_motions['repeat_' + str(i)], axis=0)
     all_motions_gt = np.concatenate(all_motions_gt, axis=0)
+    pose_gt = np.concatenate(pose_gt, axis=0)
     namelist = np.concatenate(namelist, axis=0)
 
     npy_path = os.path.join(out_path, 'results.npy')
-    npy_path_gt = os.path.join(out_path, 'gt_results.npy')
-    npy_path_namelist = os.path.join(out_path, 'namelist.npy')
     print(f"saving results file to [{npy_path}]")
-    np.save(npy_path, all_motions)
-    np.save(npy_path_gt, all_motions_gt)
-    np.save(npy_path_namelist, namelist)
+    results = {'gt': all_motions_gt, 'pose': pose_gt, 'name': namelist, 'sample': all_motions}
+    np.save(npy_path, results)
 
 
 if __name__ == "__main__":

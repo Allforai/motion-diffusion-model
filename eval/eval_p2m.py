@@ -1,19 +1,20 @@
-from data_loaders.p2m.dataset import HumanML3D
 from utils.fixseed import fixseed
 from torch.utils.data import DataLoader
 import os
 import torch
 from utils.parser_util import generate_args
-from utils.model_util import create_model_and_diffusion, load_model_wo_clip
 from utils import dist_util
-from model.cfg_sampler import ClassifierFreeSampleModel
 import numpy as np
 from collections import OrderedDict
 from datetime import datetime
 from scipy import linalg
-
+from model.temos_encoder import ActorAgnosticEncoder
+from model.pose_encoder import PoseEncoder
+from data_loaders.p2m.eval_dataset import Pose2Motion
 torch.set_default_dtype(torch.float32)
+from sklearn.metrics import mean_squared_error
 
+import numpy as np
 
 def main():
     args = generate_args()
@@ -23,9 +24,6 @@ def main():
     niter = os.path.basename(args.model_path).replace('model', '').replace('.pt', '')
     dist_util.setup_dist(args.device)
     log_file = os.path.join(os.path.dirname(args.model_path), 'eval_humanml_{}_{}'.format(name, niter))
-    if args.guidance_param != 1.:
-        log_file += f'_gscale{args.guidance_param}'
-    log_file += f'_{args.eval_mode}'
     log_file += '.log'
     print(f'Will save to log file [{log_file}]')
 
@@ -37,63 +35,151 @@ def main():
         elif args.input_text != '':
             out_path += '_' + os.path.basename(args.input_text).replace('.txt', '').replace(' ', '_').replace('.', '')
     print("Loading Dataset")
-    generated = np.load(os.path.join(out_path, 'results.npy'), allow_pickle=True)
-    gt = np.load(os.path.join(out_path, 'gt_results.npy'), allow_pickle=True)
-
-    print("Creating model and diffusion...")
-    data = HumanML3D(datapath='dataset/p2m_humanml_opt.txt', split='test')
-    train_loader = DataLoader(data, batch_size=args.batch_size, shuffle=True, num_workers=8)
-    model, diffusion = create_model_and_diffusion(args, train_loader)
-
-    print(f"Loading checkpoints from [{args.model_path}]...")
-    state_dict = torch.load(args.model_path, map_location='cpu')
-    load_model_wo_clip(model, state_dict)
-
-    if args.guidance_param != 1:
-        model = ClassifierFreeSampleModel(model)  # wrapping model with the classifier-free sampler
-    model.to(dist_util.dev())
-    model.eval()  # disable random masking
-
     with open(log_file, 'w') as f:
         all_metrics = OrderedDict({'Matching Score': OrderedDict({}),
                                    'R_precision': OrderedDict({}),
                                    'FID': OrderedDict({}),
-                                   'Diversity': OrderedDict({}),
-                                   'MultiModality': OrderedDict({})})
+                                   'MSE': OrderedDict({}),
+                                   'Diversity': OrderedDict({})})
         for replication in range(args.replication_times):
+            dataset = Pose2Motion(os.path.join(out_path, 'results.npy'), replication)
+            data_loader = DataLoader(dataset, batch_size=32, shuffle=False, num_workers=8)
             print(f'==================== Replication {replication} ====================')
             print(f'==================== Replication {replication} ====================', file=f, flush=True)
             # print(f'Time: {datetime.now()}')
             # print(f'Time: {datetime.now()}', file=f, flush=True)
-            # mat_score_dict, R_precision_dict, acti_dict = evaluate_matching_score(eval_wrapper, motion_loaders, f)
-
-
+            mat_score_dict, R_precision_dict, acti_dict = evaluate_matching_score(data_loader, f)
 
             print(f'Time: {datetime.now()}')
             print(f'Time: {datetime.now()}', file=f, flush=True)
-            fid_score_dict = evaluate_fid(eval_wrapper, gt_loader, acti_dict, f)
+            fid_score_dict, mse_dict = evaluate_fid_and_mse(data_loader, acti_dict, f)
 
             print(f'Time: {datetime.now()}')
             print(f'Time: {datetime.now()}', file=f, flush=True)
-            div_score_dict = evaluate_diversity(acti_dict, f, diversity_times)
+            div_score_dict = evaluate_diversity(acti_dict, f, 10)
 
+            print(f'!!! DONE !!!')
+            print(f'!!! DONE !!!', file=f, flush=True)
 
-def evaluate_matching_score():
+            all_metrics['Matching Score']['repeat_' + str(replication)] = [mat_score_dict]
+
+            all_metrics['R_precision']['repeat_' + str(replication)] = [R_precision_dict]
+
+            all_metrics['FID']['repeat_' + str(replication)] = [fid_score_dict]
+
+            all_metrics['MSE']['repeat_' + str(replication)] = [mse_dict]
+
+            all_metrics['Diversity']['repeat_' + str(replication)] = [div_score_dict]
+
+        mean_dict = {}
+        for metric_name, metric_dict in all_metrics.items():
+            print('========== %s Summary ==========' % metric_name)
+            print('========== %s Summary ==========' % metric_name, file=f, flush=True)
+            # print(metric_name, model_name)
+            mean, conf_interval = get_metric_statistics(list(metric_dict.values()), args.replication_times)
+            mean_dict[metric_name] = mean
+            # print(mean, mean.dtype)
+            if isinstance(mean, np.float64) or isinstance(mean, np.float32):
+                print(f'--->  Mean: {mean:.8f} CInterval: {conf_interval:.4f}')
+                print(f'--->  Mean: {mean:.8f} CInterval: {conf_interval:.4f}', file=f, flush=True)
+            elif isinstance(mean, np.ndarray):
+                line = f'---> '
+                if len(mean.shape) == 2:
+                    mean = mean.squeeze(0)
+                    conf_interval = conf_interval.squeeze(0)
+                for i in range(len(mean)):
+                    line += '(top %d) Mean: %.8f CInt: %.8f;' % (i+1, mean[i], conf_interval[i])
+                print(line)
+                print(line, file=f, flush=True)
+        return None
+
+def evaluate_matching_score(data_loader, f):
     print('========== Evaluating Matching Score ==========')
+    all_size = 0
+    matching_score_sum = 0
+    top_k_count = 0
+    all_motion_embeddings = []
+    pose_encoder, motion_encoder = build_models()
+    with torch.no_grad():
+        for _, cond, _, motion in data_loader:
+            cond = cond.to('cuda').squeeze(1).squeeze(-2).permute(0, 2, 1).contiguous()
+            motion = motion.to('cuda').squeeze(1).squeeze(-2).permute(0, 2, 1).contiguous()
+            motion_embeddings, pose_embeddings = get_co_embeddings(motion, cond, pose_encoder, motion_encoder)
+            dist_mat = euclidean_distance_matrix(pose_embeddings.cpu().numpy(), motion_embeddings.cpu().numpy())
+            matching_score_sum += dist_mat.trace()
+
+            argsmax = np.argsort(dist_mat, axis=1)
+            top_k_mat = calculate_top_k(argsmax, top_k=3)
+            top_k_count += top_k_mat.sum(axis=0)
+
+            all_size += pose_embeddings.shape[0]
+
+            all_motion_embeddings.append(motion_embeddings.cpu().numpy())
+        all_motion_embeddings = np.concatenate(all_motion_embeddings, axis=0)
+        matching_score = matching_score_sum / all_size
+        R_precision = top_k_count / all_size
+        print(f'---> Matching Score: {matching_score:.4f}')
+        print(f'---> Matching Score: {matching_score:.4f}', file=f, flush=True)
+
+        line = f'---> R_precision: '
+        for i in range(len(R_precision)):
+            line += '(top %d): %.4f ' % (i + 1, R_precision[i])
+        print(line)
+        print(line, file=f, flush=True)
+        return matching_score, R_precision, all_motion_embeddings
 
 
+def build_models():
+    pose_enc = PoseEncoder(num_neurons=512, num_neurons_mini=32, latentD=256, role="retrieval")
+    motion_enc = ActorAgnosticEncoder(nfeats=135, vae=False, latent_dim=256, ff_size=1024, num_layers=4, num_heads=4, dropout=0.1, activation="gelu")
+    checkpoint = torch.load('/mnt/disk_1/jinpeng/motion-diffusion-model/save/pmm/0816_1821/finest.tar', map_location='cuda')
+    pose_enc.load_state_dict(checkpoint['pose_encoder'])
+    motion_enc.load_state_dict(checkpoint['motion_encoder'])
+    print('Loading Evaluation Model Wrapper (Epoch %d) Completed!!' % (checkpoint['epoch']))
+    pose_enc.eval()
+    motion_enc.eval()
+    return pose_enc.to('cuda'), motion_enc.to('cuda')
 
 
-def evaluate_fid(gt_embedding, activation_dict, file):
+def get_co_embeddings(motions, pose_features, pose_encoder, motion_encoder):
+    device = 'cuda'  # use cpu
+    with torch.no_grad():
+        motion_encoder.eval()
+        pose_encoder.eval()
+        '''Movement Encoding'''
+        motion_embedding = motion_encoder(motions)
+
+        '''Pose Encoding'''
+        pose_embedding = pose_encoder(pose_features)
+    return motion_embedding, pose_embedding
+
+
+def evaluate_fid_and_mse(data_loader, activation_dict, file):
     gt_motion_embeddings = []
+    mse_loss = []
     print('========== Evaluating FID ==========')
+    _, motion_encoder = build_models()
+    loss_fn1 = torch.nn.MSELoss(reduction='none')
+    with torch.no_grad():
+        for motion, cond, _, sample in data_loader:
+            loss1 = loss_fn1(sample, motion)
+            motion = motion.to('cuda').squeeze(1).squeeze(-2).permute(0, 2, 1)
+            motion_embedding = motion_encoder(motion)
+            gt_motion_embeddings.append(motion_embedding)
+            mse_loss.append(loss1)
+    mse_loss = torch.concatenate(mse_loss, axis=0).cpu().numpy()
+    gt_motion_embeddings = torch.concatenate(gt_motion_embeddings, axis=0).cpu().numpy()
     gt_mu, gt_cov = calculate_activation_statistics(gt_motion_embeddings)
-    mu, cov = calculate_activation_statistics(motion_embeddings)
+    mu, cov = calculate_activation_statistics(activation_dict)
     fid = calculate_frechet_distance(gt_mu, gt_cov, mu, cov)
-    print(f'--->  FID: {fid:.4f}')
-    print(f'--->  FID: {fid:.4f}', file=file, flush=True)
-    eval_dict = fid
-    return eval_dict
+    print(f'--->  FID: {fid:.8f}')
+    print(f'--->  FID: {fid:.8f}', file=file, flush=True)
+    print(f"=========Evaluating MSE: ============")
+    mse = mse_loss.mean()
+    print(f'--->  MSE: {mse:.4f}')
+    print(f'--->  MSE: {mse:.4f}', file=file, flush=True)
+    return fid, mse
+
 
 def euclidean_distance_matrix(matrix1, matrix2):
     """
@@ -124,15 +210,16 @@ def calculate_activation_statistics(activations):
     cov = np.cov(activations, rowvar=False)
     return mu, cov
 
+
 def evaluate_diversity(activation_dict, file, diversity_times):
     eval_dict = OrderedDict({})
     print('========== Evaluating Diversity ==========')
-    for motion_embeddings in activation_dict:
-        diversity = calculate_diversity(motion_embeddings, diversity_times)
-        eval_dict = diversity
-        print(f'---> Diversity: {diversity:.4f}')
-        print(f'---> Diversity: {diversity:.4f}', file=file, flush=True)
+    diversity = calculate_diversity(activation_dict, diversity_times)
+    eval_dict = diversity
+    print(f'---> Diversity: {diversity:.4f}')
+    print(f'---> Diversity: {diversity:.4f}', file=file, flush=True)
     return eval_dict
+
 
 def calculate_diversity(activation, diversity_times):
     assert len(activation.shape) == 2
@@ -143,6 +230,7 @@ def calculate_diversity(activation, diversity_times):
     second_indices = np.random.choice(num_samples, diversity_times, replace=False)
     dist = linalg.norm(activation[first_indices] - activation[second_indices], axis=1)
     return dist.mean()
+
 
 def calculate_frechet_distance(mu1, sigma1, mu2, sigma2, eps=1e-6):
     """Numpy implementation of the Frechet Distance.
@@ -196,6 +284,27 @@ def calculate_frechet_distance(mu1, sigma1, mu2, sigma2, eps=1e-6):
 
     return (diff.dot(diff) + np.trace(sigma1) +
             np.trace(sigma2) - 2 * tr_covmean)
+
+
+def calculate_top_k(mat, top_k):
+    size = mat.shape[0]
+    gt_mat = np.expand_dims(np.arange(size), 1).repeat(size, 1)
+    bool_mat = (mat == gt_mat)
+    correct_vec = False
+    top_k_list = []
+    for i in range(top_k):
+        correct_vec = (correct_vec | bool_mat[:, i])
+        top_k_list.append(correct_vec[:, None])
+    top_k_mat = np.concatenate(top_k_list, axis=1)
+    return top_k_mat
+
+
+def get_metric_statistics(values, replication_times):
+    mean = np.mean(values, axis=0)
+    std = np.std(values, axis=0)
+    conf_interval = 1.96 * std / np.sqrt(replication_times)
+    return mean, conf_interval
+
 
 if __name__ == '__main__':
     main()

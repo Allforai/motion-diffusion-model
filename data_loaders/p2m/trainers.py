@@ -1,3 +1,5 @@
+import os
+
 import torch
 from torch.nn.utils import clip_grad_norm_
 import numpy as np
@@ -59,6 +61,9 @@ class PoseMotionMatchTrainer(object):
         writer = SummaryWriter(self.opt.model_dir)
         self.writer = writer
         self.contrastive_loss = ContrastiveLoss(self.opt.negative_margin)
+
+
+        os.makedirs(self.opt.model_dir, exist_ok=True)
 
     def save(self, model_dir, epoch, niter):
         state = {
@@ -190,6 +195,8 @@ class PoseMotionMatchTrainer(object):
             loss_neg_pair = 0
             val_loss = 0
             with torch.no_grad():
+                self.pose_encoder.eval()
+                self.motion_encoder.eval()
                 for i, batch_data in enumerate(val_dataloader):
                     self.forward(batch_data)
                     self.backward()
