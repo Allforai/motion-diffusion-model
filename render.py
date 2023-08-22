@@ -75,7 +75,8 @@ if __name__ == '__main__':
     #     render_cli(
     #         data=gt[file],
     #         output=os.path.join(output_gt, namelist[file]), downsample=False, mode=mode)
-    l = np.load('/mnt/disk_1/jinpeng/motion-diffusion-model/save/0813_cross/samples_0813_cross_000300000_seed10/wenxun_waltz.npy', allow_pickle=True)[0]
+    l = np.load('/mnt/disk_1/jinpeng/motion-diffusion-model/save/0813_cross/samples_0813_cross_000300000_seed10'
+                '/wenxun_waltz.npy', allow_pickle=True)[0]
     render_cli(
         data=l,
         output='/mnt/disk_1/jinpeng/motion-diffusion-model/compare/waltz', downsample=False, mode='video')

@@ -105,7 +105,7 @@ def main():
 
     for rep_i in range(args.num_repetitions):
         print(f'### Sampling [repetitions #{rep_i}]')
-        source = torch.from_numpy(np.load('/mnt/disk_1/jinpeng/motion-diffusion-model/wenxun/waltz.npy'))
+        source = torch.from_numpy(np.load('/mnt/disk_1/jinpeng/motion-diffusion-model/wenxun/waltz_edit.npy'))
         source = axis_angle_to("rot6d", source)
         source = source.to(dist_util.dev())
         sample_fn = diffusion.p_sample_loop
@@ -140,7 +140,7 @@ def main():
     if not os.path.exists(out_path):
         os.makedirs(out_path)
 
-    npy_path = os.path.join(out_path, 'wenxun_waltz.npy')
+    npy_path = os.path.join(out_path, 'wenxun_waltz_edit.npy')
     print(f"saving results file to [{npy_path}]")
     np.save(npy_path, all_motions)
     # np.save(npy_path_gt, all_motions_gt)

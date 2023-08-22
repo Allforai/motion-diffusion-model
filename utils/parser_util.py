@@ -26,7 +26,7 @@ def parse_and_load_from_model(parser):
         if a in model_args.keys():
             setattr(args, a, model_args[a])
 
-        elif 'cond_mode' in model_args: # backward compitability
+        elif 'cond_mode' in model_args:  # backward compitability
             unconstrained = (model_args['cond_mode'] == 'no_cond')
             setattr(args, 'unconstrained', unconstrained)
 
@@ -44,6 +44,7 @@ def get_args_per_group_name(parser, args, group_name):
             group_dict = {a.dest: getattr(args, a.dest, None) for a in group._group_actions}
             return list(argparse.Namespace(**group_dict).__dict__.keys())
     return ValueError('group_name was not found.')
+
 
 def get_model_path_from_args():
     try:
@@ -97,7 +98,6 @@ def add_model_options(parser):
                        help="condition mode")
 
 
-
 def add_data_options(parser):
     group = parser.add_argument_group('dataset')
     group.add_argument("--dataset", default='p2m', choices=['humanml', 'kit', 'humanact12', 'uestc', 'p2m'], type=str,
@@ -112,7 +112,8 @@ def add_training_options(parser):
                        help="Path to save checkpoints and results.")
     group.add_argument("--overwrite", action='store_true',
                        help="If True, will enable to use an already existing save_dir.")
-    group.add_argument("--train_platform_type", default='NoPlatform', choices=['NoPlatform', 'ClearmlPlatform', 'TensorboardPlatform'], type=str,
+    group.add_argument("--train_platform_type", default='NoPlatform',
+                       choices=['NoPlatform', 'ClearmlPlatform', 'TensorboardPlatform'], type=str,
                        help="Choose platform to log results. NoPlatform means no logging.")
     group.add_argument("--lr", default=1e-4, type=float, help="Learning rate.")
     group.add_argument("--weight_decay", default=0.0, type=float, help="Optimizer weight decay.")
@@ -204,6 +205,19 @@ def add_evaluation_options(parser):
                        help="For classifier-free sampling - specifies the s parameter, as defined in the paper.")
 
 
+def add_t2p_options(parser):
+    group = parser.add_argument_group('t2p')
+    group.add_argument('--pose_model', type=str, default='/mnt/disk_1/jinpeng/motion-diffusion-model/text2pose'
+                                                         '/experiments/eccv22_posescript_models'
+                                                         '/CondTextPoser_textencoder-glovebigru_vocA1H1_latentD32'
+                                                         '/train-posescript-H1/wloss_kld0.2_v2v4.0_rot2.0_jts2'
+                                                         '.0_kldnpmul0.02_kldntmul0.0/B32_Adam_lr1e-05_wd0'
+                                                         '.0001_pretrained_gen_glovebigru_vocA1H1_dataA1/seed0'
+                                                         '/checkpoint_1999.pth', help='Path to the model.')
+    group.add_argument('--n_generate', type=int, default=32, help='number of pose generated')
+    group.add_argument('--op', type=str, default='all', help='optimal path search method')
+
+
 def get_cond_mode(args):
     if args.unconstrained:
         cond_mode = 'no_cond'
@@ -232,6 +246,7 @@ def generate_args():
     add_base_options(parser)
     add_sampling_options(parser)
     add_generate_options(parser)
+    add_t2p_options(parser)
     args = parse_and_load_from_model(parser)
     cond_mode = get_cond_mode(args)
 

@@ -20,8 +20,7 @@ def image_to_video(file, output, fps):
 
 if __name__ == '__main__':
     path = os.getcwd()
-    keyids = 'waltz'
-    relative_path = '/mnt/disk_1/jinpeng/motion-diffusion-model/compare/' + keyids + '.mp4'
+    relative_path = '/mnt/disk_1/jinpeng/motion-diffusion-model/compare/waltz_edit.mp4'
     output = os.path.join(path, relative_path)
-    file = '/mnt/disk_1/jinpeng/motion-diffusion-model/compare/handstand_gt'
+    file = '/mnt/disk_1/jinpeng/motion-diffusion-model/compare/waltz_edit'
     image_to_video(file=file, output=output, fps=12)
