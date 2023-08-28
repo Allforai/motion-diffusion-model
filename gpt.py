@@ -61,12 +61,15 @@ in_context = "Given a user prompt, envision a motion scene and create eight dist
              "than the left hip and behind the right hand and wide apart from the right hand, the right leg is behind " \
              "the other. The right upper arm is parallel to the ground." "The right knee is unbent with the right leg " \
              "next to the left while both hands are apart wider than shoulder width. The right upper arm, " \
-             "the left leg, the torso and the right thigh are straightened up while the right elbow is bent a bit. Prompt: "
+             "the left leg, the torso and the right thigh are straightened up while the right elbow is bent a bit. " \
+             "Prompt: "
 
 retries = 3
+b = 1087
+c = b
 while retries > 0:
     try:
-        for i in range(75, len(textlist)):
+        for i in range(b, len(textlist)):
             user_input = in_context + list(textlist[i].values())[0].split('#')[0]
             conversation.append({"role": "user", "content": user_input})
             response = openai.ChatCompletion.create(
@@ -82,8 +85,11 @@ while retries > 0:
                 '/mnt/disk_1/jinpeng/motion-diffusion-model/GPT_response_0822/' + list(textlist[i].keys())[0] + '.npy',
                 response['choices'][0]['message']['content'])
             print("number" + str(i) + ': ' + list(textlist[i].keys())[0] + 'npy')
+            c = i
     except Exception as e:
         if e:
+            b = c
+            print('try: number ' + str(b))
             print(e)
             print('Timeout error, retrying...')
             retries -= 1

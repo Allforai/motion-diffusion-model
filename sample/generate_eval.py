@@ -40,7 +40,7 @@ def main():
     args.batch_size = args.num_samples  # Sampling a single batch from the testset, with exactly args.num_samples
 
     print("Loading Dataset")
-    data = HumanML3D(datapath='dataset/p2m_humanml_opt.txt', split='test')
+    data = HumanML3D(pose_length=args.pose_length, datapath='dataset/p2m_humanml_opt.txt', split='test')
     train_loader = DataLoader(data, batch_size=args.batch_size, shuffle=False, num_workers=8)
 
     print("Creating model and diffusion...")

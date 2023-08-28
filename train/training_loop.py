@@ -98,7 +98,7 @@ class TrainLoop:
                 )
             }
         elif 'p2m' in self.cond_mode and args.eval_during_training:
-            self.test_data = HumanML3D(datapath='dataset/p2m_humanml_opt.txt', split='test')
+            self.test_data = HumanML3D(pose_length=args.pose_length, datapath='dataset/p2m_humanml_opt.txt', split='test')
             self.test_loader = DataLoader(self.test_data, batch_size=args.batch_size, shuffle=False, num_workers=8, drop_last=True)
 
         self.use_ddp = False

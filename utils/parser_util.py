@@ -62,6 +62,7 @@ def add_base_options(parser):
     group.add_argument("--device", default=0, type=int, help="Device id to use.")
     group.add_argument("--seed", default=10, type=int, help="For fixing random seed.")
     group.add_argument("--batch_size", default=64, type=int, help="Batch size during training.")
+    group.add_argument("--pose_length", default=8, type=int, help="pose length")
 
 
 def add_diffusion_options(parser):
@@ -151,7 +152,7 @@ def add_sampling_options(parser):
     group.add_argument("--num_samples", default=10, type=int,
                        help="Maximal number of prompts to sample, "
                             "if loading dataset from file, this field will be ignored.")
-    group.add_argument("--num_repetitions", default=1, type=int,
+    group.add_argument("--num_repetitions", default=3, type=int,
                        help="Number of repetitions, per sample (text prompt/action)")
     group.add_argument("--guidance_param", default=2.5, type=float,
                        help="For classifier-free sampling - specifies the s parameter, as defined in the paper.")
@@ -227,6 +228,7 @@ def get_cond_mode(args):
         cond_mode = 'p2mcross'
     elif args.dataset in ['p2m']:
         cond_mode = 'p2m'
+    print('cond_mode is : ', cond_mode)
     return cond_mode
 
 

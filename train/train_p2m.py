@@ -31,7 +31,7 @@ def main():
     dist_util.setup_dist(args.device)
 
     print("creating data loader...")
-    training_data = HumanML3D(datapath='dataset/p2m_humanml_opt.txt')
+    training_data = HumanML3D(pose_length=args.pose_length, datapath='dataset/p2m_humanml_opt.txt')
     train_loader = DataLoader(training_data, batch_size=args.batch_size, shuffle=True, num_workers=8)
 
     print("creating model and diffusion...")

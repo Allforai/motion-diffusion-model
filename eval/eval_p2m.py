@@ -25,8 +25,9 @@ def main():
     dist_util.setup_dist(args.device)
     log_file = os.path.join(os.path.dirname(args.model_path), 'eval_humanml_{}_{}'.format(name, niter))
     log_file += '.log'
+    # print(f'Will save to log file [{log_file}]')
+    log_file = '/mnt/disk_1/jinpeng/motion-diffusion-model/save/0813_cross/eval_gpt_gptpose_0813_cross_000300000.log'
     print(f'Will save to log file [{log_file}]')
-
     if out_path == '':
         out_path = os.path.join(os.path.dirname(args.model_path),
                                 'samples_{}_{}_seed{}'.format(name, niter, args.seed))
@@ -42,7 +43,8 @@ def main():
                                    'MSE': OrderedDict({}),
                                    'Diversity': OrderedDict({})})
         for replication in range(args.replication_times):
-            dataset = Pose2Motion(os.path.join(out_path, 'results.npy'), replication)
+            # dataset = Pose2Motion(os.path.join(out_path, 'results.npy'), replication)
+            dataset = Pose2Motion('/mnt/disk_1/jinpeng/motion-diffusion-model/GPT_response_8022_smplh/motion_data_gptpose.npy', replication)
             data_loader = DataLoader(dataset, batch_size=32, shuffle=False, num_workers=8)
             print(f'==================== Replication {replication} ====================')
             print(f'==================== Replication {replication} ====================', file=f, flush=True)

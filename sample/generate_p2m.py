@@ -45,11 +45,11 @@ def main():
     args.batch_size = args.num_samples  # Sampling a single batch from the testset, with exactly args.num_samples
 
     print("Loading Dataset")
-    data = HumanML3D(datapath='dataset/p2m_humanml_opt.txt', split='test')
-    train_loader = DataLoader(data, batch_size=1, shuffle=True, num_workers=8)
+    data = HumanML3D(pose_length=args.pose_length, datapath='dataset/p2m_humanml_opt.txt', split='test')
+    test_loader = DataLoader(data, batch_size=1, shuffle=True, num_workers=8)
 
     print("Creating model and diffusion...")
-    model, diffusion = create_model_and_diffusion(args, train_loader)
+    model, diffusion = create_model_and_diffusion(args, test_loader)
 
     print(f"Loading checkpoints from [{args.model_path}]...")
     state_dict = torch.load(args.model_path, map_location='cpu')
@@ -102,7 +102,6 @@ def main():
             pose = sample[:, 3:].permute(0, 3, 2, 1).reshape(1, 64, -1, 6)
             vertices = smplh(1, pose,
                              trans).cpu().numpy()
-
             source = source.unsqueeze(0)
             trans_gt = source[:, 0:3].permute(0, 3, 2, 1)
             trans_gt = inverse(trans_gt)

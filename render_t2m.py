@@ -48,27 +48,16 @@ def render_cli(data, output, mode, downsample):
 
 
 if __name__ == '__main__':
+    #   data shape: ( 64, 6890, 3)
 
-    # Testing set
-    pr = np.load('/mnt/disk_1/jinpeng/motion-diffusion-model/save/0813_cross/samples_0813_cross_000300000_seed10'
-                 '/test_results.npy',
-                 allow_pickle=True)
-    gt = np.load('/mnt/disk_1/jinpeng/motion-diffusion-model/save/0813_cross/samples_0813_cross_000300000_seed10'
-                 '/test_gt_results.npy', allow_pickle=True)
-    namelist = np.load('/mnt/disk_1/jinpeng/motion-diffusion-model/dataset/namelist.npy', allow_pickle=True)
-
-    # Training Code test set
-    # pr = np.load('/mnt/disk_1/jinpeng/motion-diffusion-model/save/p2m_temos_0812_test_loss'
-    #              '/samples_p2m_temos_0812_test_loss_000100000_seed10/train_codetest.npy',
-    #              allow_pickle=True)
-    # print("Rendering")
-    # gt = np.load('/mnt/disk_1/jinpeng/motion-diffusion-model/save/p2m_temos_0812_test_loss'
-    #              '/samples_p2m_temos_0812_test_loss_000100000_seed10/train_codetest_gt.npy', allow_pickle=True)
-    # namelist = np.load('/mnt/disk_1/jinpeng/motion-diffusion-model/dataset/namelist_train_codetest_0813.npy', allow_pickle=True)
-    mode = 'sequence'
-    output_gt = "/mnt/disk_1/jinpeng/motion-diffusion-model/0814_cross_test_gt"
-    for i, file in enumerate(range(len(namelist))):
-        render_cli(
-            data=gt[file],
-            output=os.path.join(output_gt, namelist[file]), downsample=False, mode=mode)
-    # data shape: ( 64, 6890, 3)
+    mode = "sequence"
+    output = "/mnt/disk_1/jinpeng/motion-diffusion-model/0822_GPT_render"
+    baby = np.load('/mnt/disk_1/jinpeng/motion-diffusion-model/GPT_response_8022_smplh/total_batch.npy',
+                   allow_pickle=True).item()
+    namelist = np.load('/mnt/disk_1/jinpeng/motion-diffusion-model/GPT_response_8022_smplh/name.npy')
+    for i in range(3):
+        baby_i = baby['repeat_' + str(i)]
+        for j, file in enumerate(baby_i):
+            render_cli(
+                data=file.squeeze(0),
+                output=os.path.join(output, namelist[j].split('.')[0] + '_repeat_' + str(i)), downsample=False, mode=mode)

@@ -12,7 +12,7 @@ from einops import rearrange
 
 
 class HumanML3D(data.Dataset):
-    def __init__(self, datapath='./dataset/humanml_opt.txt', split="train"):
+    def __init__(self, pose_length=8, datapath='./dataset/humanml_opt.txt', split="train"):
         self.dataset_name = 'p2m'
         self.dataname = 'p2m'
 
@@ -28,6 +28,7 @@ class HumanML3D(data.Dataset):
         opt.save_root = pjoin(abs_base_path, opt.save_root)
         opt.meta_dir = './dataset'
         self.opt = opt
+        self.pose_length = pose_length
         print('Loading dataset %s ...' % opt.dataset_name)
         self.motion_length = opt.max_motion_length
 
@@ -87,8 +88,9 @@ class HumanML3D(data.Dataset):
 
         idx = random.randint(0, len(motion['features']) - self.motion_length)
         features = motion['features'][idx:idx + self.motion_length]
+
         features = features.T.unsqueeze(1)
-        pose_feature = motion['pose_feature'][np.arange(idx, idx + self.motion_length, 8)]
+        pose_feature = motion['pose_feature'][np.arange(idx, idx + self.motion_length, self.pose_length)]
         # padding_feature = torch.zeros(8, 3)
         pose_feature = pose_feature[:, 6:]  # 126 dimension
         # trans_feature = motion['trans_feature'][idx:idx + self.motion_len] return {'features': features,

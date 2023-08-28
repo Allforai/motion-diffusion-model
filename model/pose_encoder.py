@@ -14,10 +14,10 @@ class Object(object):
 
 class PoseEncoder(nn.Module):
 
-    def __init__(self, num_neurons=512, num_neurons_mini=32, latentD=512, role=None):
+    def __init__(self, num_frame=8, num_neurons=512, num_neurons_mini=32, latentD=512, role=None):
         super(PoseEncoder, self).__init__()
 
-        self.input_dim = 8 * 126
+        self.input_dim = num_frame * 126
 
         # use VPoser pose encoder architecture...
         vposer_params = Object()
