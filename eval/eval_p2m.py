@@ -26,7 +26,7 @@ def main():
     log_file = os.path.join(os.path.dirname(args.model_path), 'eval_humanml_{}_{}'.format(name, niter))
     log_file += '.log'
     # print(f'Will save to log file [{log_file}]')
-    log_file = '/mnt/disk_1/jinpeng/motion-diffusion-model/save/0813_cross/eval_gpt_gptpose_0813_cross_000300000.log'
+    log_file = '/mnt/disk_1/jinpeng/motion-diffusion-model/save/0813_cross/samples_0813_cross_000300000_seed10/results.log'
     print(f'Will save to log file [{log_file}]')
     if out_path == '':
         out_path = os.path.join(os.path.dirname(args.model_path),
@@ -44,7 +44,7 @@ def main():
                                    'Diversity': OrderedDict({})})
         for replication in range(args.replication_times):
             # dataset = Pose2Motion(os.path.join(out_path, 'results.npy'), replication)
-            dataset = Pose2Motion('/mnt/disk_1/jinpeng/motion-diffusion-model/GPT_response_8022_smplh/motion_data_gptpose.npy', replication)
+            dataset = Pose2Motion('/mnt/disk_1/jinpeng/motion-diffusion-model/save/0813_cross/samples_0813_cross_000300000_seed10/results.npy', replication)
             data_loader = DataLoader(dataset, batch_size=32, shuffle=False, num_workers=8)
             print(f'==================== Replication {replication} ====================')
             print(f'==================== Replication {replication} ====================', file=f, flush=True)
@@ -132,9 +132,9 @@ def evaluate_matching_score(data_loader, f):
 
 
 def build_models():
-    pose_enc = PoseEncoder(num_neurons=512, num_neurons_mini=32, latentD=256, role="retrieval")
-    motion_enc = ActorAgnosticEncoder(nfeats=135, vae=False, latent_dim=256, ff_size=1024, num_layers=4, num_heads=4, dropout=0.1, activation="gelu")
-    checkpoint = torch.load('/mnt/disk_1/jinpeng/motion-diffusion-model/save/pmm/0816_1821/finest.tar', map_location='cuda')
+    pose_enc = PoseEncoder(num_frame=8, num_neurons=512, num_neurons_mini=32, latentD=256, role="retrieval")
+    motion_enc = ActorAgnosticEncoder(nfeats=135, vae=False, latent_dim=256, ff_size=1024, num_layers=2, num_heads=4, dropout=0.1, activation="gelu")
+    checkpoint = torch.load('/mnt/disk_1/jinpeng/motion-diffusion-model/save/pmm/0828_len8_batch32_2layer_encoder/finest.tar', map_location='cuda')
     pose_enc.load_state_dict(checkpoint['pose_encoder'])
     motion_enc.load_state_dict(checkpoint['motion_encoder'])
     print('Loading Evaluation Model Wrapper (Epoch %d) Completed!!' % (checkpoint['epoch']))

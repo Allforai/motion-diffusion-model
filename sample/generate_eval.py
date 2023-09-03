@@ -93,7 +93,7 @@ def main():
     pose_gt = np.concatenate(pose_gt, axis=0)
     namelist = np.concatenate(namelist, axis=0)
 
-    npy_path = os.path.join(out_path, 'results.npy')
+    npy_path = os.path.join(out_path, 'results_cfg' + str(args.guidance_param) + '.npy')
     print(f"saving results file to [{npy_path}]")
     results = {'gt': all_motions_gt, 'pose': pose_gt, 'name': namelist, 'sample': all_motions}
     np.save(npy_path, results)

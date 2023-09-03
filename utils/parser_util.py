@@ -95,7 +95,7 @@ def add_model_options(parser):
     group.add_argument("--unconstrained", action='store_true',
                        help="Model is trained unconditionally. That is, it is constrained by neither text nor action. "
                             "Currently tested on HumanAct12 only.")
-    group.add_argument("--cond_mode", required=True, type=str, default="p2mcross",
+    group.add_argument("--cond_mode", type=str, default="cross",
                        help="condition mode")
 
 
@@ -144,7 +144,8 @@ def add_training_options(parser):
 
 def add_sampling_options(parser):
     group = parser.add_argument_group('sampling')
-    group.add_argument("--model_path", required=True, type=str,
+    group.add_argument("--model_path", type=str, default='/mnt/disk_1/jinpeng/motion-diffusion-model/save/0813_cross'
+                                                         '/model000300000.pt',
                        help="Path to model####.pt file to be sampled.")
     group.add_argument("--output_dir", default='', type=str,
                        help="Path to results dir (auto created by the script). "

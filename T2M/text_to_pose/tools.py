@@ -1,3 +1,6 @@
+import random
+import string
+
 from torch.distributions import kl_divergence, Normal
 import torch
 
@@ -8,6 +11,11 @@ def compute_text2poses_similarity(tds, pds):
         kl = kl_divergence(pd, td).sum(-1, keepdims=True)  # (n_generate x 32) -> (n_generate x 1)
         kl_divs.append(kl)
     return kl_divs
+
+
+def generate_random_string(length):
+    letters = string.ascii_letters
+    return ''.join(random.choice(letters) for _ in range(length))
 
 
 def viterbi_algorithm(energies):

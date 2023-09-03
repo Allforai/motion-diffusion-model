@@ -56,7 +56,8 @@ def show_traj(coords):
     curveData = bpy.data.curves.new('myCurve', type='CURVE')
     curveData.dimensions = '3D'
     curveData.resolution_u = 2
-
+    matr = bpy.data.materials.new("Red")
+    matr.diffuse_color = (1, 0, 0, 0.8)
     # map coords to spline
     polyline = curveData.splines.new('POLY')
     polyline.points.add(len(coords)-1)
@@ -66,6 +67,7 @@ def show_traj(coords):
 
     # create Object
     curveOB = bpy.data.objects.new('myCurve', curveData)
+    curveOB.active_material = matr
     curveData.bevel_depth = 0.01
 
     bpy.context.collection.objects.link(curveOB)

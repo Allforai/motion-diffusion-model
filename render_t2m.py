@@ -1,6 +1,6 @@
 import argparse
 import logging
-
+import pickle
 # import torch
 
 # from data_loaders.p2m.tools import inverse
@@ -50,14 +50,17 @@ def render_cli(data, output, mode, downsample):
 if __name__ == '__main__':
     #   data shape: ( 64, 6890, 3)
 
-    mode = "sequence"
-    output = "/mnt/disk_1/jinpeng/motion-diffusion-model/0822_GPT_render"
-    baby = np.load('/mnt/disk_1/jinpeng/motion-diffusion-model/GPT_response_8022_smplh/total_batch.npy',
-                   allow_pickle=True).item()
-    namelist = np.load('/mnt/disk_1/jinpeng/motion-diffusion-model/GPT_response_8022_smplh/name.npy')
-    for i in range(3):
+    mode = "video"
+    output = "/mnt/disk_1/jinpeng/motion-diffusion-model/save/0813_cross/samples_0813_cross_000300000_seed10/smplh_cfg2.5"
+    with open('/mnt/disk_1/jinpeng/motion-diffusion-model/save/0813_cross/samples_0813_cross_000300000_seed10/smplh.pkl', 'rb') as f:
+        baby = pickle.load(f)
+    namelist = np.load('/mnt/disk_1/jinpeng/motion-diffusion-model/save/0813_cross/samples_0813_cross_000300000_seed10/results.npy', allow_pickle=True).item()['name']
+    for i in range(1):
         baby_i = baby['repeat_' + str(i)]
         for j, file in enumerate(baby_i):
-            render_cli(
-                data=file.squeeze(0),
-                output=os.path.join(output, namelist[j].split('.')[0] + '_repeat_' + str(i)), downsample=False, mode=mode)
+            if j < 50:
+                render_cli(
+                    data=file.squeeze(0),
+                    output=os.path.join(output, namelist[j].split('.')[0] + '_repeat_' + str(i)), downsample=False, mode=mode)
+                os.system(r"cp {} {}".format(os.path.join('dataset/HumanML3D', 'texts', namelist[j] + '.txt'),
+                                             os.path.join(output, namelist[j].split('.')[0] + '_repeat_' + str(i) + '/')))

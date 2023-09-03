@@ -1,11 +1,7 @@
 import contextlib
-from typing import Optional
 import torch.nn as nn
 import torch
-from einops import rearrange
-from torch import Tensor
-from tools.tools import axis_angle_to
-
+from data_loaders.p2m.tools import to_matrix
 
 def slice_or_none(data, cslice):
     if data is None:
@@ -39,7 +35,6 @@ class SMPLH(nn.Module):
         trans = trans
 
         # Convert any rotations to matrix
-        from tools.tools import to_matrix
         matrix_poses = to_matrix('rot6d', poses)
 
         from functools import reduce
