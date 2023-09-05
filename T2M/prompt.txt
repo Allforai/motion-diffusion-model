@@ -1,0 +1,47 @@
+You are a helpful assistant that help me to describe the body pose in a motion.
+
+I will give you a motion description. Envision a motion scene and create eight distinct pose descriptions at a frame rate of 1 fps. Ensure that each description is self-contained. The difference between two adjacent descriptions must be small, considering the small interval. You should be detailed as possible.
+
+Before you write each description, you must follow these instructions. These are of primary importance:
+
+1. When comparing the relative positions of body parts, we use skeletal keypoints to represent body parts. But in pose description, we use the name of body parts.
+
+2. Angle posecodes: describe how a body part 'bends' around a joint j. Let a set of keypoints (i, j, k) where i and k are neighboring keypoints to j ¨C for instance left shoulder, elbow and wrist respectively ¨C and let pl denote the position of keypoint l. The angle posecode is computed as the cosine similarity between vectors v_{ji} = pi ? pjand v_{jk} = pk ? pj . You should select the description word from the list ['completely bent', 'almost completely bent', 'bent at right angle', 'partially bent', 'slightly bent', 'straight']. You should select the body part form the list ["left knee", "right knee", "left elbow", "right elbow"].
+
+3. Distance posecodes: rate the L2-distance ¡Îv_{ij}¡Î between two keypoints i and j. You should select the description word from the list ['close', 'shoulder width', 'spread', 'wide']. You should select the body part form the list ["left elbow", "left hand", "left knee", "left foot", "left shoulder", "right elbow", "right hand", "right knee", "right foot", "right shoulder"].
+
+4. Posecodes on relative position: compute the difference between two sets of coordinates along a specific axis, to determine their relative positioning. A keypoint i is 'at the left of' another keypoint j if p^x_i > p^x_j ; it is 'above' it if p^y_i > p^y_j ; and 'in front of' it if p^z_i > p^z_j. About X-axis, you should select the description word from the list ['at the right of', 'x-ignored', 'at the left of'].  About Y-axis, you should select the description word from the list ['below', 'ignored_relpos1', 'above']. About Z-axis, you should select the description word from the list ['behind', 'z-ignored', 'in front of'].  You should select the body part form the list ["left elbow", "left hand", "left knee", "left foot", "left shoulder", "left ankle", "left hip", "left wrist", "right elbow", "right hand", "right knee", "right foot", "right shoulder", "right ankle", "right hip", "right wrist", "torso"].
+
+5. Pitch & roll posecodes: assess the verticality or horizontality of a body part defined by two keypoints i and j. A body part is said to be 'vertical' if the cosine similarity between v_{ij}¡Îv_{ij}¡Î and the unit vector along the y-axis is close to 0. A body part is said to be 'horizontal' if it is close to 1. You should select the description word from the list ['vertical', 'pitch-roll-ignored', 'horizontal']. You should select the body part form the list ["left elbow", "left hand", "left knee", "left foot", "left hand", "right elbow", "right hand", "right knee", "right foot", "right shoulder", "pelvis"].
+
+6. Ground-contact posecodes can be seen as specific cases of relative positioning posecodes along the y axis. They help determine whether a keypoint i is close to the ground by evaluating p^y_i? min_jp^y_j . As not all poses are semantically in actual contact with the ground, we do not resort to these posecodes for systematic description, but solely for intermediate computations, to further infer super-posecodes for specific pose configurations. You should select the description word from the list ['on ground', 'ground-ignored'].
+
+7. Pose description should only include the position relationship between body parts, not some verbs such as "eat", "walk", etc.
+
+8. You must describe your thoughts on pose changes in timing in natural language at the beginning. After that, you should write all the pose description together. The response should follow the format:
+{
+"thoughts": "Your thoughts on pose changes in timing in natural language",
+"pose_list":[
+"F1": "pose description",
+"F2": "pose description",
+"F3": "pose description",
+"F4": "pose description",
+"F5": "pose description",
+"F6": "pose description",
+"F7": "pose description",
+"F8": "pose description",
+]
+}
+
+The pose_list contains eight pose descriptions. Remember to add "'dict"' at the beginning and the end of the dict. Ensure that your response can be parsed by Python json.loads
+
+Some sample pose descriptions are as follows:
+The person is striding forward with the right leg in front of the left. The right heel is on the ground with the toes pointing up. The left knee is bent. The upper body is hunched forward slightly. Both arms are bent, with the left arm reaching in front of the upper body.
+The person is in a crouching pose and is touching the ground. The left hand is backwards, spread apart from the right hand. The right hand is beside the right foot, below the right hip, then the left elbow is bent at right angle, the left upper arm and the right thigh are parallel to the floor and the right arm is in front of the left arm, both knees are almost completely bent.
+The person is kneeling on their left leg and is bent forward. The figure is doing backwards movements and is in a inclined pose. The right knee is forming a L shape and the left foot is stretched forwards, the right elbow is barely bent, then the left shoulder is further down than the right.
+The subject is inclined backward and to the left of the pelvis. The left hand is further down than the left hip and behind the right hand and wide apart from the right hand, the right leg is behind the other. The right upper arm is parallel to the ground. The right knee is unbent with the right leg next to the left while both hands are apart wider than shoulder width. The right upper arm the left leg, the torso and the right thigh are straightened up while the right elbow is bent a bit.
+The subject is angled towards their right with their right forearm parallel to the floor and their left knee above their right knee. Their right knee is in front of their left knee and their body is hunched over with their left elbow unbent, their right hand is lying beneath their left hand. Their right elbow is lower than their left elbow. Both feet are wide apart. Their left hand is above their left shoulder, their hands are spread apart, their left hand is raised higher than their neck. Their left knee is unbent, their right upper arm is flat, their right foot is ahead of their left foot, their left elbow is ahead of their right elbow. Their right knee is nearly bent while their left elbow is wide apart from their right elbow. Their right calf is straightened up. Their right elbow is unbent. Their left foot is behind their torso. Their right hand is behind their torso while their left foot is higher than their right foot, their right hand is located behind their left hand.
+Their left hand is lower than their right hand with their left elbow barely bent while their left hand is further down than their left hip and their body is angled forwards and their right hand is higher than their neck. Their right hand is wide apart from their left hand while their right foot is located in front of their left foot while their right shoulder is lying over their left shoulder while their right calf is upright. Their right elbow is raised over their left elbow while their left hand is behind their right hand while their left elbow is wide apart from their right elbow and their right hand is above their right shoulder while their right elbow is bent a bit.
+Someone is in a flipping pose while making backwards movements. His left elbow is about shoulder width apart from the other. His left hand is upwards, both elbows are bent slightly and the figure is hunched over with his hands reaching backward. They are further up than his shoulders while both knees are bent to maximum.
+
+Prompt: a man is eating hamburg

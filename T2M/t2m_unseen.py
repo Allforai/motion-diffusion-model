@@ -46,10 +46,8 @@ in_context = "Given a user prompt, envision a motion scene and create eight dist
              "note of the balance of the head, torso, and legs, as well as whether the body's center of gravity is " \
              "leaning forward, backward, or to one side. 5. Gestures and Postures: Pay attention to the movements and " \
              "positions of the hands. The posture of the hands, the degree of finger flexion, and the orientation of " \
-             "the palms can provide information about the posture. 6. Don't include words in the scenes such as " \
-             "chairs, table or hamburger. Don't use the words like mouth or stomach, just include the body parts that " \
-             "could reflect human posture. Do not use the relative state of the frames before and after to describe " \
-             "the pose. Do not use verb. Some sample descriptions are as follows: The person is striding forward with " \
+             "the palms can provide information about the posture." \
+             "Some sample descriptions are as follows: The person is striding forward with " \
              "the right leg in front of the left. The right heel is on the ground with the toes pointing up. The left " \
              "knee is bent. The upper body is hunched forward slightly. Both arms are bent, with the left arm " \
              "reaching in front of the upper body." "The person is in a crouching pose and is touching the ground. " \

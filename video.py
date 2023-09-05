@@ -33,4 +33,5 @@ if __name__ == '__main__':
                 if os.path.isdir(os.path.join(path, file, name_1, name_2)):
                     data_path.append(os.path.join(path, file, name_1, name_2))
     for nn in data_path:
-        image_to_video(file=nn, output=nn, fps=12)
+        if 'ballet' in nn:
+            image_to_video(file=nn, output=nn, fps=12)

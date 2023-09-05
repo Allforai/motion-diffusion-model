@@ -73,7 +73,7 @@ def gpt_response(text_input):
                 print(e)
                 print('Timeout error, retrying...')
                 retries -= 1
-                time.sleep(15)
+                time.sleep(3000)
             else:
                 raise e
 

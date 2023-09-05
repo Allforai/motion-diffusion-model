@@ -77,7 +77,7 @@ if __name__ == '__main__':
     for file in os.listdir(path):
         for name_1 in os.listdir(os.path.join(path, file)):
             for name_2 in os.listdir(os.path.join(path, file, name_1)):
-                if 'prompt' not in name_2 and 'npy' in name_2:
+                if 'prompt' not in name_2 and 'npy' in name_2 and 'ballet' in name_2:
                     data_path.append(os.path.join(path, file, name_1, name_2))
     for npy_path in data_path:
         file = np.load(npy_path)[0]

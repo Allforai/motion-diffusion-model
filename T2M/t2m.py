@@ -15,7 +15,9 @@ from model.cfg_sampler import ClassifierFreeSampleModel
 from tqdm import tqdm
 from body_models.smplh import SMPLH
 import numpy as np
-CUDA_LAUNCH_BLOCKING=1
+
+CUDA_LAUNCH_BLOCKING = 1
+
 
 def main():
     args = generate_args()
@@ -68,7 +70,8 @@ def main():
                     f = f.split(':')[1]
                     pose = pose_model.sample_str_nposes(f, n=args.n_generate)['pose_body'][0].view(args.n_generate, -1)
                     text_dist = pose_model.text_encoder(pose_model.tokenizer(f).to(dist_util.dev()).view(1, -1),
-                                                        torch.tensor([len(pose_model.tokenizer(f).to(dist_util.dev()))]))
+                                                        torch.tensor(
+                                                            [len(pose_model.tokenizer(f).to(dist_util.dev()))]))
                     pose_dist = pose_model.pose_encoder(pose)
                     poses.append(pose)
                     pose_dists.append(pose_dist)
@@ -94,8 +97,8 @@ def main():
     # print('==============Stage 1 Finished=============')
     # print('==============Stage 2 Begin=============')
     cond_all = np.load(
-    '/mnt/disk_1/jinpeng/motion-diffusion-model/save/0813_cross/samples_0813_cross_000300000_seed10/t2m_cond_all.npy',
-    allow_pickle=True).item()
+        '/mnt/disk_1/jinpeng/motion-diffusion-model/save/0813_cross/samples_0813_cross_000300000_seed10/t2m_cond_all.npy',
+        allow_pickle=True).item()
     all_motions = {}
     for i in range(args.num_repetitions):
         repeat_time = 'repeat_' + str(i)

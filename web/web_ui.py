@@ -9,6 +9,8 @@ from utils.parser_util import generate_args
 from data_loaders.p2m.dataset import HumanML3D
 from torch.utils.data import DataLoader
 from utils.fixseed import fixseed
+os.environ['PYOPENGL_PLATFORM']  = 'osmesa'
+# import pyrender
 
 
 @st.cache_resource
@@ -25,6 +27,7 @@ def get_model():
     model.eval()  # disable random masking
     return model, diffusion
 
+
 @st.cache_resource
 def get_pose_model():
     pose_model_path = '/mnt/disk_1/jinpeng/motion-diffusion-model/text2pose/experiments/eccv22_posescript_models/CondTextPoser_textencoder-glovebigru_vocA1H1_latentD32/train-posescript-H1/wloss_kld0.2_v2v4.0_rot2.0_jts2.0_kldnpmul0.02_kldntmul0.0/B32_Adam_lr1e-05_wd0.0001_pretrained_gen_glovebigru_vocA1H1_dataA1/seed0/checkpoint_1999.pth'
@@ -40,7 +43,7 @@ def main():
     st.title("Zero-Shot Motion Generator")
 
     # 文本输入
-    text_input = st.text_input("Please Enter Your Order: (a person cries, a man dance)")
+    text_input = st.text_input("Please Enter Your Order: ( ① Imagine a scenario where a person is dancing ballet. ② A person first stands up straight, with their shoulders naturally on either side of their body, and then bends over.)")
 
     # gpt response
     split_text = gpt_response(text_input)
@@ -76,6 +79,7 @@ def main():
     st.image(merged_image)
     #
     st.header("Motion Response")
+    st.write("Blender rendering. It will tasks about 1 min")
     model, diffusion = get_model()
     vertices = motion_response(pose_list, model, diffusion)
     vertices_path = '/mnt/disk_1/jinpeng/motion-diffusion-model/web/data/vertices.npy'
@@ -84,9 +88,9 @@ def main():
 
     st.image('/mnt/disk_1/jinpeng/motion-diffusion-model/web/data/vertices.png')
     os.system(r"ffmpeg -y -framerate 12 -i {}/frame_%04d.png {}".format('/mnt/disk_1/jinpeng/motion-diffusion'
-                                                                            '-model/web/picture_folder',
-                                                                            '/mnt/disk_1/jinpeng/motion-diffusion'
-                                                                            '-model/web/data/vertices.mp4'))
+                                                                        '-model/web/picture_folder',
+                                                                        '/mnt/disk_1/jinpeng/motion-diffusion'
+                                                                        '-model/web/data/vertices.mp4'))
     st.video('/mnt/disk_1/jinpeng/motion-diffusion-model/web/data/vertices.mp4')
 
 
