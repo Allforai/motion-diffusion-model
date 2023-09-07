@@ -50,17 +50,17 @@ def render_cli(data, output, mode, downsample):
 if __name__ == '__main__':
     #   data shape: ( 64, 6890, 3)
 
-    mode = "video"
-    output = "/mnt/disk_1/jinpeng/motion-diffusion-model/save/0813_cross/samples_0813_cross_000300000_seed10/smplh_cfg2.5"
-    with open('/mnt/disk_1/jinpeng/motion-diffusion-model/save/0813_cross/samples_0813_cross_000300000_seed10/smplh.pkl', 'rb') as f:
+    mode = "sequence"
+    output = "/mnt/disk_1/jinpeng/motion-diffusion-model/save/0813_cross/samples_0813_cross_000300000_seed10_0905gpt/results"
+    with open('/mnt/disk_1/jinpeng/motion-diffusion-model/save/0813_cross/samples_0813_cross_000300000_seed10_0905gpt/t2m_smplh.pkl', 'rb') as f:
         baby = pickle.load(f)
-    namelist = np.load('/mnt/disk_1/jinpeng/motion-diffusion-model/save/0813_cross/samples_0813_cross_000300000_seed10/results.npy', allow_pickle=True).item()['name']
-    for i in range(1):
+    namelist = np.load('/mnt/disk_1/jinpeng/motion-diffusion-model/save/0813_cross/samples_0813_cross_000300000_seed10_0905gpt/t2m_namelist.npy')
+    for i in range(3):
         baby_i = baby['repeat_' + str(i)]
         for j, file in enumerate(baby_i):
-            if j < 50:
-                render_cli(
-                    data=file.squeeze(0),
-                    output=os.path.join(output, namelist[j].split('.')[0] + '_repeat_' + str(i)), downsample=False, mode=mode)
-                os.system(r"cp {} {}".format(os.path.join('dataset/HumanML3D', 'texts', namelist[j] + '.txt'),
-                                             os.path.join(output, namelist[j].split('.')[0] + '_repeat_' + str(i) + '/')))
+            # if j < 50:
+            render_cli(
+                data=file.squeeze(0),
+                output=os.path.join(output, namelist[j].split('.')[0] + '_repeat_' + str(i)), downsample=False, mode=mode)
+            os.system(r"cp {} {}".format(os.path.join('dataset/HumanML3D', 'texts', namelist[j] + '.txt'),
+                                         os.path.join(output, namelist[j].split('.')[0] + '_repeat_' + str(i) + '/')))

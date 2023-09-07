@@ -1,4 +1,6 @@
 import argparse
+import json
+
 import torch
 from utils.parser_util import generate_args
 from utils.fixseed import fixseed
@@ -32,7 +34,13 @@ def main():
             out_path += '_' + args.text_prompt.replace(' ', '_').replace('.', '')
         elif args.input_text != '':
             out_path += '_' + os.path.basename(args.input_text).replace('.txt', '').replace(' ', '_').replace('.', '')
-
+    print(out_path)
+    print(out_path)
+    print(out_path)
+    out_path = out_path.replace('samples_0813_cross_000300000_seed10', 'samples_0813_cross_000300000_seed10_0905gpt')
+    print(out_path)
+    print(out_path)
+    print(out_path)
     if not os.path.exists(out_path):
         os.makedirs(out_path)
     print("Creating model and diffusion...")
@@ -56,18 +64,22 @@ def main():
     false_name = []
     true_name = []
     # Text Data
-    for file in os.listdir('/mnt/disk_1/jinpeng/motion-diffusion-model/GPT_response_0822'):
+    for file in os.listdir('/mnt/disk_1/jinpeng/motion-diffusion-model/GPT_response_0905'):
         namelist.append(file)
     for name in tqdm(namelist):
         try:
-            Fs = np.load('/mnt/disk_1/jinpeng/motion-diffusion-model/GPT_response_0822/' + name).item().split('\n')
+            with open('/mnt/disk_1/jinpeng/motion-diffusion-model/GPT_response_0905/' + name) as f:
+                line = f.readline()
+                a = json.loads(line)
+            Fs = a.split(':')[3:]
+            assert len(Fs) == 8
             pose_dists = []
             text_dists = []
             poses = []
             # sampling pose  # batch sampling
             with torch.no_grad():
                 for f in Fs:
-                    f = f.split(':')[1]
+                    f = f.split('"')[1]
                     pose = pose_model.sample_str_nposes(f, n=args.n_generate)['pose_body'][0].view(args.n_generate, -1)
                     text_dist = pose_model.text_encoder(pose_model.tokenizer(f).to(dist_util.dev()).view(1, -1),
                                                         torch.tensor(
@@ -93,12 +105,12 @@ def main():
         except:
             false_name.append(name)
             pass
-    np.save('/mnt/disk_1/jinpeng/motion-diffusion-model/GPT_response_0822_false_name.npy', false_name)
+    np.save('/mnt/disk_1/jinpeng/motion-diffusion-model/GPT_response_0905_false_name.npy', false_name)
     # print('==============Stage 1 Finished=============')
     # print('==============Stage 2 Begin=============')
-    cond_all = np.load(
-        '/mnt/disk_1/jinpeng/motion-diffusion-model/save/0813_cross/samples_0813_cross_000300000_seed10/t2m_cond_all.npy',
-        allow_pickle=True).item()
+    # cond_all = np.load(
+    #     '/mnt/disk_1/jinpeng/motion-diffusion-model/save/0813_cross/samples_0813_cross_000300000_seed10/t2m_cond_all.npy',
+    #     allow_pickle=True).item()
     all_motions = {}
     for i in range(args.num_repetitions):
         repeat_time = 'repeat_' + str(i)

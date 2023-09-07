@@ -31,40 +31,9 @@ system_message = {"role": "system", "content": "You are a helpful assistant."}
 max_response_tokens = 4096
 token_limit = 4096
 conversation = [system_message]
+in_context = open("/mnt/disk_1/jinpeng/motion-diffusion-model/T2M/prompt.txt").readlines()
 prompt = input('Please enter your order\n')
-in_context = "Given a user prompt, envision a motion scene and create eight distinct brief pose descriptions at a " \
-             "frame rate of 1 fps. Ensure that each description is self-contained. The difference between two " \
-             "adjacent descriptions must be small, considering the small interval. Use the following format: [F1: "", " \
-             "F2: "", ..., F8: ""]. Before you write each description, you must follow these instructions. These are " \
-             "of primary importance: 1. Posture and Position: Observe and describe the overall position and " \
-             "orientation of the body. This includes the three-dimensional spatial location of the body, whether it " \
-             "is upright, sitting, or standing. 2. Body Curves: Observe the curves and contours of the body. Pay " \
-             "attention to the curves and postures of the head, neck, back, waist, hips, shoulders, arms, " \
-             "and legs. 3. Limbs Angles: Pay attention to the angles of each joint. Observe the angles of the " \
-             "shoulders, elbows, wrists, hips, knees, ankles, and other areas, and describe whether they are bent, " \
-             "extended, or flexed. 4. Center of Gravity: Observe the position of the body's center of gravity. Take " \
-             "note of the balance of the head, torso, and legs, as well as whether the body's center of gravity is " \
-             "leaning forward, backward, or to one side. 5. Gestures and Postures: Pay attention to the movements and " \
-             "positions of the hands. The posture of the hands, the degree of finger flexion, and the orientation of " \
-             "the palms can provide information about the posture." \
-             "Some sample descriptions are as follows: The person is striding forward with " \
-             "the right leg in front of the left. The right heel is on the ground with the toes pointing up. The left " \
-             "knee is bent. The upper body is hunched forward slightly. Both arms are bent, with the left arm " \
-             "reaching in front of the upper body." "The person is in a crouching pose and is touching the ground. " \
-             "The left hand is backwards, spread apart from the right hand. The right hand is beside the right foot, " \
-             "below the right hip, then the left elbow is bent at right angle, the left upper arm and the right thigh " \
-             "are parallel to the floor and the right arm is in front of the left arm, both knees are almost " \
-             "completely bent. The person is kneeling on their left leg and is bent forward." "The figure is doing " \
-             "backwards movements and is in a inclined pose. The right knee is forming a L shape and the left foot is " \
-             "stretched forwards, the right elbow is barely bent, then the left shoulder is further down than the " \
-             "right. The subject is inclined backward and to the left of the pelvis. The left hand is further down " \
-             "than the left hip and behind the right hand and wide apart from the right hand, the right leg is behind " \
-             "the other. The right upper arm is parallel to the ground." "The right knee is unbent with the right leg " \
-             "next to the left while both hands are apart wider than shoulder width. The right upper arm, " \
-             "the left leg, the torso and the right thigh are straightened up while the right elbow is bent a bit. " \
-             "Prompt: "
-
-user_input = in_context + prompt
+user_input = str(in_context)[2:-2] + prompt
 conversation.append({"role": "user", "content": user_input})
 response = openai.ChatCompletion.create(
     engine="gpt-35-turbo",
@@ -105,7 +74,7 @@ print(path)
 
 random_string = generate_random_string(5)
 
-out_path = os.path.join('/mnt/disk_1/jinpeng/motion-diffusion-model/0831_unseen', prompt.split(' ')[-1], random_string)
+out_path = os.path.join('/mnt/disk_1/jinpeng/motion-diffusion-model/0907_unseen', prompt.split(' ')[-1], random_string)
 print(f"Images saved in {out_path}")
 os.makedirs(f'{out_path}', exist_ok=True)
 print("==========Generating Pose Image==========")
