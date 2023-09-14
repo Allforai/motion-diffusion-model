@@ -1,14 +1,16 @@
 import torch
 import os
 import numpy as np
-from text2pose.generative.evaluate_generative import load_model
+from text2pose.retrieval.evaluate_retrieval import load_model
 from text2pose.generative.model_generative import CondTextPoser
 from text2pose.vocab import Vocabulary  # needed
-from T2M.text_to_pose.tools import compute_text2poses_similarity, search_optimal_path, generate_random_string
+from T2M.text_to_pose.tools import compute_text2poses_similarity, search_retrieval_path, generate_random_string
 from data_loaders.p2m.tools import axis_angle_to
 from utils.parser_util import generate_args
+from utils.fixseed import fixseed
 from data_loaders.p2m.dataset import HumanML3D
 from torch.utils.data import DataLoader
+from text2pose.data import PoseScript
 from utils.model_util import create_model_and_diffusion, load_model_wo_clip
 from data_loaders.p2m.tools import inverse
 from body_models.smplh import SMPLH
@@ -16,12 +18,64 @@ import random
 import string
 from T2M.text_to_pose import utils_visu
 from PIL import Image, ImageDraw, ImageFont
+import text2pose.utils as utils
+import text2pose.config as config
 from human_body_prior.body_model.body_model import BodyModel
 import math
+from tqdm import tqdm
 import time
 # GPT
 print("==========GPT is working==========")
 import openai
+
+
+args = generate_args()
+# fixseed(args.seed)
+name = os.path.basename(os.path.dirname(args.model_path))
+niter = os.path.basename(args.model_path).replace('model', '').replace('.pt', '')
+
+device = 'cuda'
+data_version = "posescript-A1"
+batch_size = 32
+split_for_research = 'train'
+
+
+def setup(model_path, split_for_research):
+    # load model
+    model, text_encoder_name = load_model(model_path, device)
+
+    # pre-compute pose features
+    dataset = PoseScript(version=data_version, split=split_for_research, text_encoder_name=text_encoder_name)
+    data_loader = torch.utils.data.DataLoader(
+        dataset, sampler=None, shuffle=False,
+        batch_size=batch_size,
+        num_workers=8,
+        pin_memory=True,
+        drop_last=False
+    )
+
+    poses_features = torch.zeros(len(dataset), model.latentD).to(device)
+    for i, batch in tqdm(enumerate(data_loader)):
+        poses = batch['pose'].to(device)
+        with torch.inference_mode():
+            pfeat = model.pose_encoder(poses)
+            poses_features[i * batch_size:i * batch_size + len(poses)] = pfeat
+
+    # prepare pose identifiers within the studied split
+    dataIDs = utils.read_posescript_json(f"{split_for_research}_ids.json")
+    dataID_2_pose_info = utils.read_posescript_json("ids_2_dataset_sequence_and_frame_index.json")
+
+    # setup body model
+    body_model = BodyModel(bm_fname=config.SMPLH_NEUTRAL_BM, num_betas=config.n_betas)
+    body_model.eval()
+    body_model.to(device)
+
+    return model, poses_features, dataIDs, dataID_2_pose_info, body_model
+
+pose_model_path = '/mnt/disk_1/jinpeng/motion-diffusion-model/text2pose/experiments/eccv22_posescript_models/PoseText_textencoder-glovebigru_vocA1H1_latentD512/train-posescript-A1/BBC/B32_Adam_lr0.0002_stepLR_lrstep20.0_lrgamma0.5/seed0/best_model.pth'
+
+pose_model, poses_features, dataIDs, dataID_2_pose_info, body_model = setup(pose_model_path, split_for_research)
+
 
 openai.api_type = "azure"
 openai.api_base = "https://gcrgpt4aoai9c.openai.azure.com/"
@@ -31,10 +85,12 @@ system_message = {"role": "system", "content": "You are a helpful assistant."}
 max_response_tokens = 4096
 token_limit = 4096
 conversation = [system_message]
-in_context = open("/mnt/disk_1/jinpeng/motion-diffusion-model/T2M/prompt.txt").readlines()
+in_context = open("/mnt/disk_1/jinpeng/motion-diffusion-model/T2M/prompt3.txt").readlines()
 # prompt = input('Please enter your order\n')
-for prompt in ['a man is arguing', 'a man bends over', 'a man cries', 'a man is eating', 'a man is excited', 'a man plays soccer', 'a man prays', 'a man raise arms', 'a man shoot basketball', 'a man squat', 'a man walks', 'a man dance waltz']:
-    user_input = str(in_context)[2:-2] + prompt
+
+retries = 1000
+for prompt in ['a man bends over', 'a man cries', 'a man is eating', 'a man is excited', 'a man plays soccer', 'a man prays', 'a man raise arms', 'a man shoot basketball', 'a man squat', 'a man walks', 'a man dance waltz']:
+    user_input = str(in_context) + prompt
     conversation.append({"role": "user", "content": user_input})
     retries = 1000
     while retries > 0:
@@ -50,48 +106,49 @@ for prompt in ['a man is arguing', 'a man bends over', 'a man cries', 'a man is 
             retries = 0
         except Exception as e:
             if e:
-                time.sleep(0.1)
+                time.sleep(0.5)
                 retries -= 1
             else:
                 raise e
 
     Fs = response['choices'][0]['message']['content']
     print("==========GPT response==========")
-
     print(Fs)
-
-
-    print("==========Sampling Pose==========")
-    # pose
-    pose_model_path = '/mnt/disk_1/jinpeng/motion-diffusion-model/text2pose/experiments/eccv22_posescript_models/CondTextPoser_textencoder-glovebigru_vocA1H1_latentD32/train-posescript-H1/wloss_kld0.2_v2v4.0_rot2.0_jts2.0_kldnpmul0.02_kldntmul0.0/B32_Adam_lr1e-05_wd0.0001_pretrained_gen_glovebigru_vocA1H1_dataA1/seed0/checkpoint_1999.pth'
-    n_generate = 32
-
-    pose_model, _ = load_model(pose_model_path, 'cuda')
-    body_model = BodyModel(bm_fname='/mnt/disk_1/jinpeng/motion-diffusion-model/body_models/SMPLH_NEUTRAL.npz', num_betas=16)
-    body_model.eval()
-    body_model.to('cuda')
-    pose_dists = []
-    text_dists = []
     poses = []
+    text2poses_similarity = []
+    total_pose_features = []
+    # pose
+    n_retrieve = 32
     with torch.no_grad():
         for i in range(8):
             f = Fs[Fs.find("F"+str(i+1)) + 4: Fs.find("F"+str(i+2))-1]
-            # f = 'A person is making a yoga pose. Their right elbow is rather bent and their left elbow is nearly bent while both feet are in the front and both hands are past shoulder width apart and are lower than both hips. Their left hand is back while their left knee is bent at near a 90 degree angle while the figure is reaching backwards.'
             print(f)
-            pose = pose_model.sample_str_nposes(f, n=n_generate)['pose_body'][0].view(n_generate, -1)
-            text_dist = pose_model.text_encoder(pose_model.tokenizer(f).to('cuda').view(1, -1),
-                                                torch.tensor([len(pose_model.tokenizer(f).to('cuda'))]))
-            pose_dist = pose_model.pose_encoder(pose)
-            poses.append(pose)
-            pose_dists.append(pose_dist)
-            text_dists.append(text_dist)
-    text2poses_similarity = compute_text2poses_similarity(text_dists, pose_dists)
-    path = search_optimal_path(pose_dists, text2poses_similarity, 'cuda', n_generate, 'all')
-    print(path)
+            text_feature = pose_model.encode_raw_text(f)
+            pose_dists = poses_features
+            # rank poses by relevance and get their pose id
+            scores = text_feature.view(1, -1).mm(poses_features.t())[0]
+            similarity, indices_rank = scores.sort(descending=True)
+            relevant_pose_ids = [dataIDs[i] for i in indices_rank[:n_retrieve]]
+            pose_feature = poses_features[indices_rank[:n_retrieve]]
+            similarity = similarity[indices_rank[:n_retrieve]]
+            # get corresponding pose data
+            all_pose_data = []
+            for pose_id in relevant_pose_ids:
+                pose_info = dataID_2_pose_info[str(pose_id)]
+                all_pose_data.append(utils.get_pose_data_from_file(pose_info))
+            all_pose_data = torch.cat(all_pose_data).to('cuda')
+            poses.append(all_pose_data)
+            text2poses_similarity.append(similarity)
+            total_pose_features.append(pose_feature)
+            # total_pose_features = torch.cat(total_pose_features)
+
+    # pose_similarity = total_pose_features.view(1, -1).mm(poses_features.t())[0]
+    path = search_retrieval_path(total_pose_features, text2poses_similarity, 'cuda', n_retrieve, 'all')
+    # print(path)
 
     random_string = generate_random_string(5)
 
-    out_path = os.path.join('/mnt/disk_1/jinpeng/motion-diffusion-model/0911_unseen', prompt.split(' ')[-1], random_string)
+    out_path = os.path.join('/mnt/disk_1/jinpeng/motion-diffusion-model/0914_unseen', prompt.split(' ')[-1], random_string)
     print(f"Images saved in {out_path}")
     os.makedirs(f'{out_path}', exist_ok=True)
     print("==========Generating Pose Image==========")
@@ -134,7 +191,6 @@ for prompt in ['a man is arguing', 'a man bends over', 'a man cries', 'a man is 
 
         merged_image.save(f'{out_path}/merged_image_frame{pose_i+1}.jpg')
 
-
     draw = ImageDraw.Draw(merged_image)
 
     print("==========Generating Condition==========")
@@ -155,7 +211,7 @@ for prompt in ['a man is arguing', 'a man bends over', 'a man cries', 'a man is 
 
     image_width, image_height = imgs_selected[0].shape[1], imgs_selected[0].shape[0]
     merged_width = nb_cols * image_width
-    merged_height = math.floor(len(poses) / nb_cols) * image_height
+    merged_height = math.floor(1) * image_height
     merged_image = Image.new('RGB', (merged_width, merged_height))
 
     for i in range(len(imgs_selected)):
@@ -166,7 +222,6 @@ for prompt in ['a man is arguing', 'a man bends over', 'a man cries', 'a man is 
         image = Image.fromarray(imgs_selected[i])
         merged_image.paste(image, (x, y))
     merged_image.save(f'{out_path}/selected_image_frame_{raw_paths}.jpg')
-
 
     print("==========Generating SMPLH Meshes==========")
     args = generate_args()

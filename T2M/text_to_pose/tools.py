@@ -86,3 +86,37 @@ def search_optimal_path(pose_dists, text_kl_divs, device, n_generate, op='all'):
 
     path = viterbi_algorithm(energies.tolist())
     return path
+
+
+def search_retrieval_path(total_pose_features, text2poses_similarity, device='cuda', n_retrieve=32, op='all'):
+    scores = [torch.zeros(n_retrieve, n_retrieve).to(device)]  # make len(kl_divs) == len(text_kl_divs)
+    for i in range(len(total_pose_features) - 1):
+        pose_dist1 = total_pose_features[i + 1]  # (n_generate x 32)
+        pose_dist2 = total_pose_features[i]  # (n_generate x 32)
+
+        score = pose_dist1.mm(pose_dist2.t())
+        # (n_generate**2 x 32)
+        # pose_dist1_proxy = Normal(pose_dist1.loc.unsqueeze(1).repeat(1, n_generate, 1).view(-1, pose_dist1.loc.shape[-1]),
+        #                           pose_dist1.scale.unsqueeze(1).repeat(1, n_generate, 1).view(-1, pose_dist1.scale.shape[-1]))
+        # # (n_generate**2 x 32)
+        # pose_dist2_proxy = Normal(pose_dist2.loc.repeat(n_generate, 1),
+        #                           pose_dist2.scale.repeat(n_generate, 1))
+
+        # (n_generate**2 x 32) -> (n_generate**2) -> (n_generate x n_generate)
+        # kl_div = kl_divergence(pose_dist1_proxy, pose_dist2_proxy).sum(-1).view(n_generate, n_generate)
+        scores.append(score)
+
+    pose_kl_divs = torch.stack(scores)  # (8 x n_generate x n_generate)
+    text_kl_divs = torch.stack(text2poses_similarity).reshape(-1, n_retrieve, 1).expand(-1, -1, n_retrieve) * 5.0 # (8 x n_generate x 1) -> (8 x n_generate x n_generate)
+
+    if op == 'all':
+        energies = pose_kl_divs + text_kl_divs
+    elif op == 'text':
+        energies = text_kl_divs
+    elif op == 'pose':
+        energies = pose_kl_divs
+    else:
+        raise ValueError(f'Unknown {op}')
+
+    path = viterbi_algorithm(energies.tolist())
+    return path

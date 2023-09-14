@@ -25,7 +25,7 @@ if __name__ == '__main__':
     # output = os.path.join(path, relative_path)
     # file = '/mnt/disk_1/jinpeng/motion-diffusion-model/save/pose_length/cross_length32/samples_cross_length32_000150000_seed10/render_7149_0/007149_repeat_0'
     # output = file + '.mp4'
-    path = '/mnt/disk_1/jinpeng/motion-diffusion-model/0831_unseen'
+    path = '/mnt/disk_1/jinpeng/motion-diffusion-model/0911_unseen'
     data_path = []
     for file in os.listdir(path):
         for name_1 in os.listdir(os.path.join(path, file)):
@@ -33,5 +33,5 @@ if __name__ == '__main__':
                 if os.path.isdir(os.path.join(path, file, name_1, name_2)):
                     data_path.append(os.path.join(path, file, name_1, name_2))
     for nn in data_path:
-        if 'ballet' in nn:
-            image_to_video(file=nn, output=nn, fps=12)
+        # if 'left' in nn:
+        image_to_video(file=nn, output=nn, fps=12)

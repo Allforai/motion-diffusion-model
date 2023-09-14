@@ -49,8 +49,9 @@ while retries > 0:
             )
             del conversation[1]
             retries = 10000
-            mess = json.dumps(response['choices'][0]['message']['content'])
-            f2 = open('/mnt/disk_1/jinpeng/motion-diffusion-model/GPT_response_0905/' + list(textlist[i].keys())[0] + '.json', 'w')
+            print(response['choices'][0]['message']['content'])
+            mess = response['choices'][0]['message']['content']
+            f2 = open('/mnt/disk_1/jinpeng/motion-diffusion-model/GPT_response_0912/' + list(textlist[i].keys())[0] + '.json', 'w')
             f2.write(mess)
             f2.close()
             print("number" + str(i) + ': ' + list(textlist[i].keys())[0] + 'json')
@@ -66,4 +67,5 @@ while retries > 0:
             time.sleep(1)
         else:
             del conversation[1]
+            b = c
             raise e

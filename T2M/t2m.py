@@ -37,10 +37,7 @@ def main():
     print(out_path)
     print(out_path)
     print(out_path)
-    out_path = out_path.replace('samples_0813_cross_000300000_seed10', 'samples_0813_cross_000300000_seed10_0905gpt')
-    print(out_path)
-    print(out_path)
-    print(out_path)
+    out_path = out_path.replace('samples_0813_cross_000300000_seed10', 'samples_0813_cross_000300000_seed10_0912gpt')
     if not os.path.exists(out_path):
         os.makedirs(out_path)
     print("Creating model and diffusion...")
@@ -64,11 +61,11 @@ def main():
     false_name = []
     true_name = []
     # Text Data
-    for file in os.listdir('/mnt/disk_1/jinpeng/motion-diffusion-model/GPT_response_0905'):
+    for file in os.listdir('/mnt/disk_1/jinpeng/motion-diffusion-model/GPT_response_0912'):
         namelist.append(file)
     for name in tqdm(namelist):
         try:
-            with open('/mnt/disk_1/jinpeng/motion-diffusion-model/GPT_response_0905/' + name) as f:
+            with open('/mnt/disk_1/jinpeng/motion-diffusion-model/GPT_response_0912/' + name) as f:
                 line = f.readline()
                 a = json.loads(line)
             Fs = a.split(':')[3:]
@@ -105,7 +102,7 @@ def main():
         except:
             false_name.append(name)
             pass
-    np.save('/mnt/disk_1/jinpeng/motion-diffusion-model/GPT_response_0905_false_name.npy', false_name)
+    np.save('/mnt/disk_1/jinpeng/motion-diffusion-model/GPT_response_0912_false_name.npy', false_name)
     # print('==============Stage 1 Finished=============')
     # print('==============Stage 2 Begin=============')
     # cond_all = np.load(
