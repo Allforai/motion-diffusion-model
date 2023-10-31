@@ -31,10 +31,11 @@ system_message = {"role": "system", "content": "You are a helpful assistant."}
 max_response_tokens = 4096
 token_limit = 4096
 conversation = [system_message]
-in_context = open("/mnt/disk_1/jinpeng/motion-diffusion-model/T2M/prompt.txt").readlines()
+in_context = open("/mnt/disk_1/jinpeng/motion-diffusion-model/T2M/prompt3.txt").readlines()
 # prompt = input('Please enter your order\n')
-for prompt in ['a man is arguing', 'a man bends over', 'a man cries', 'a man is eating', 'a man is excited', 'a man plays soccer', 'a man prays', 'a man raise arms', 'a man shoot basketball', 'a man squat', 'a man walks', 'a man dance waltz']:
-    user_input = str(in_context)[2:-2] + prompt
+current_time = time.strftime("%Y-%m-%d %H-%M-%S")
+for prompt in ['a man cries', 'a man eats', 'a man is excited', 'a man plays soccer', 'a man prays', 'a man raise arms', 'a man shoot basketball', 'a man squat', 'a man walks', 'a man dance waltz']:
+    user_input = str(in_context)[:-2] + prompt
     conversation.append({"role": "user", "content": user_input})
     retries = 1000
     while retries > 0:
@@ -91,7 +92,7 @@ for prompt in ['a man is arguing', 'a man bends over', 'a man cries', 'a man is 
 
     random_string = generate_random_string(5)
 
-    out_path = os.path.join('/mnt/disk_1/jinpeng/motion-diffusion-model/0911_unseen', prompt.split(' ')[-1], random_string)
+    out_path = os.path.join('/mnt/disk_1/jinpeng/motion-diffusion-model/' + current_time + '_unseen', prompt.split(' ')[-1], random_string)
     print(f"Images saved in {out_path}")
     os.makedirs(f'{out_path}', exist_ok=True)
     print("==========Generating Pose Image==========")
@@ -221,8 +222,10 @@ for prompt in ['a man is arguing', 'a man bends over', 'a man cries', 'a man is 
 
     npy_path = os.path.join(out_path, prompt.split(' ')[-1] + '.npy')
     prompt_path = os.path.join(out_path, prompt.split(' ')[-1] + '_prompt.npy')
-    gpt_response_path = os.path.join(out_path, prompt.split(' ')[-1] + '_gpt.npy')
+    gpt_response_path = os.path.join(out_path, prompt.split(' ')[-1] + '_gpt.json')
     print(f"saving results file to [{npy_path}]")
     np.save(npy_path, all_motions)
     np.save(prompt_path, prompt)
-    np.save(gpt_response_path, Fs)
+    f2 = open(gpt_response_path, 'w')
+    f2.write(Fs)
+    f2.close()

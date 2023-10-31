@@ -3,6 +3,7 @@ import torch.nn as nn
 import torch
 from data_loaders.p2m.tools import to_matrix
 
+
 def slice_or_none(data, cslice):
     if data is None:
         return data
@@ -41,7 +42,6 @@ class SMPLH(nn.Module):
         import operator
         save_shape_bs_len = matrix_poses.shape[:-3]
         nposes = reduce(operator.mul, save_shape_bs_len, 1)
-
 
         # Reshaping
         matrix_poses = matrix_poses.reshape((nposes, *matrix_poses.shape[-3:]))

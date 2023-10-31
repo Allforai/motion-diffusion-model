@@ -52,17 +52,32 @@ def collate(batch):
         action_text = [b['action_text']for b in notnone_batches]
         cond['y'].update({'action_text': action_text})
 
+    if 'keyid' in notnone_batches[0]:
+        Keyid = [b['keyid']for b in notnone_batches]
+        cond['y'].update({'keyid': Keyid})
+
     return motion, cond
 
 # an adapter to our collate func
 def t2m_collate(batch):
     # batch.sort(key=lambda x: x[3], reverse=True)
-    adapted_batch = [{
-        'inp': torch.tensor(b[4].T).float().unsqueeze(1), # [seqlen, J] -> [J, 1, seqlen]
-        'text': b[2], #b[0]['caption']
-        'tokens': b[6],
-        'lengths': b[5],
-    } for b in batch]
+    if len(batch[0]) == 8:
+        adapted_batch = [{
+            'inp': torch.tensor(b[4].T).float().unsqueeze(1), # [seqlen, J] -> [J, 1, seqlen]
+            # 'inp': b[4].T.clone().detach().requires_grad_(True),
+            'text': b[2], #b[0]['caption']
+            'tokens': b[6],
+            'lengths': b[5],
+            'keyid': b[7],
+        } for b in batch]
+    else:
+        adapted_batch = [{
+            'inp': torch.tensor(b[4].T).float().unsqueeze(1), # [seqlen, J] -> [J, 1, seqlen]
+            # 'inp': b[4].T.clone().detach().requires_grad_(True),
+            'text': b[2], #b[0]['caption']
+            'tokens': b[6],
+            'lengths': b[5],
+        } for b in batch]
     return collate(adapted_batch)
 
 

@@ -6,6 +6,7 @@ from os.path import join as pjoin
 from tqdm import tqdm
 from utils import dist_util
 
+
 def build_models(opt):
     if opt.text_enc_mod == 'bigru':
         text_encoder = TextEncoderBiGRU(word_size=opt.dim_word,
@@ -21,7 +22,6 @@ def build_models(opt):
                             output_size=opt.dim_z,
                             hidden_size=opt.dim_pri_hidden,
                             n_layers=opt.n_layers_pri)
-
 
     seq_decoder = TextVAEDecoder(text_size=text_size,
                                  input_size=opt.dim_att_vec + opt.dim_z + opt.dim_movement_latent,
@@ -39,13 +39,15 @@ def build_models(opt):
     len_estimator = MotionLenEstimatorBiGRU(opt.dim_word, opt.dim_pos_ohot, 512, opt.num_classes)
 
     # latent_dis = LatentDis(input_size=opt.dim_z * 2)
-    checkpoints = torch.load(pjoin(opt.checkpoints_dir, opt.dataset_name, 'length_est_bigru', 'model', 'latest.tar'), map_location=opt.device)
+    checkpoints = torch.load(pjoin(opt.checkpoints_dir, opt.dataset_name, 'length_est_bigru', 'model', 'latest.tar'),
+                             map_location=opt.device)
     len_estimator.load_state_dict(checkpoints['estimator'])
     len_estimator.to(opt.device)
     len_estimator.eval()
 
     # return text_encoder, text_decoder, att_layer, vae_pri, vae_dec, vae_pos, motion_dis, movement_dis, latent_dis
     return text_encoder, seq_prior, seq_decoder, att_layer, movement_enc, movement_dec, len_estimator
+
 
 class CompV6GeneratedDataset(Dataset):
 
@@ -91,7 +93,7 @@ class CompV6GeneratedDataset(Dataset):
 
                     m_lens = mov_length * opt.unit_length
                     pred_motions, _, _ = trainer.generate(word_emb, pos_ohot, cap_lens, m_lens,
-                                                          m_lens[0]//opt.unit_length, opt.dim_pose)
+                                                          m_lens[0] // opt.unit_length, opt.dim_pose)
                     if t == 0:
                         # print(m_lens)
                         # print(text_data)
@@ -118,10 +120,8 @@ class CompV6GeneratedDataset(Dataset):
         self.opt = opt
         self.w_vectorizer = w_vectorizer
 
-
     def __len__(self):
         return len(self.generated_motion)
-
 
     def __getitem__(self, item):
         data = self.generated_motion[item]
@@ -143,9 +143,11 @@ class CompV6GeneratedDataset(Dataset):
                                      ], axis=0)
         return word_embeddings, pos_one_hots, caption, sent_len, motion, m_length, '_'.join(tokens)
 
+
 class CompMDMGeneratedDataset(Dataset):
 
-    def __init__(self, model, diffusion, dataloader, mm_num_samples, mm_num_repeats, max_motion_length, num_samples_limit, scale=1.):
+    def __init__(self, model, diffusion, dataloader, mm_num_samples, mm_num_repeats, max_motion_length,
+                 num_samples_limit, scale=1.):
         self.dataloader = dataloader
         self.dataset = dataloader.dataset
         assert mm_num_samples < len(dataloader.dataset)
@@ -164,14 +166,13 @@ class CompMDMGeneratedDataset(Dataset):
         generated_motion = []
         mm_generated_motions = []
         if mm_num_samples > 0:
-            mm_idxs = np.random.choice(real_num_batches, mm_num_samples // dataloader.batch_size +1, replace=False)
+            mm_idxs = np.random.choice(real_num_batches, mm_num_samples // dataloader.batch_size + 1, replace=False)
             mm_idxs = np.sort(mm_idxs)
         else:
             mm_idxs = []
         print('mm_idxs', mm_idxs)
 
         model.eval()
-
 
         with torch.no_grad():
             for i, (motion, model_kwargs) in tqdm(enumerate(dataloader)):
@@ -207,12 +208,12 @@ class CompMDMGeneratedDataset(Dataset):
                     )
 
                     if t == 0:
-                        sub_dicts = [{'motion': sample[bs_i].squeeze().permute(1,0).cpu().numpy(),
-                                    'length': model_kwargs['y']['lengths'][bs_i].cpu().numpy(),
-                                    'caption': model_kwargs['y']['text'][bs_i],
-                                    'tokens': tokens[bs_i],
-                                    'cap_len': len(tokens[bs_i]),
-                                    } for bs_i in range(dataloader.batch_size)]
+                        sub_dicts = [{'motion': sample[bs_i].squeeze().permute(1, 0).cpu().numpy(),
+                                      'length': model_kwargs['y']['lengths'][bs_i].cpu().numpy(),
+                                      'caption': model_kwargs['y']['text'][bs_i],
+                                      'tokens': tokens[bs_i],
+                                      'cap_len': len(tokens[bs_i]),
+                                      } for bs_i in range(dataloader.batch_size)]
                         generated_motion += sub_dicts
 
                     if is_mm:
@@ -222,21 +223,19 @@ class CompMDMGeneratedDataset(Dataset):
 
                 if is_mm:
                     mm_generated_motions += [{
-                                    'caption': model_kwargs['y']['text'][bs_i],
-                                    'tokens': tokens[bs_i],
-                                    'cap_len': len(tokens[bs_i]),
-                                    'mm_motions': mm_motions[bs_i::dataloader.batch_size],  # collect all 10 repeats from the (32*10) generated motions
-                                    } for bs_i in range(dataloader.batch_size)]
-
+                        'caption': model_kwargs['y']['text'][bs_i],
+                        'tokens': tokens[bs_i],
+                        'cap_len': len(tokens[bs_i]),
+                        'mm_motions': mm_motions[bs_i::dataloader.batch_size],
+                        # collect all 10 repeats from the (32*10) generated motions
+                    } for bs_i in range(dataloader.batch_size)]
 
         self.generated_motion = generated_motion
         self.mm_generated_motion = mm_generated_motions
         self.w_vectorizer = dataloader.dataset.w_vectorizer
 
-
     def __len__(self):
         return len(self.generated_motion)
-
 
     def __getitem__(self, item):
         data = self.generated_motion[item]
@@ -246,7 +245,8 @@ class CompMDMGeneratedDataset(Dataset):
         if self.dataset.mode == 'eval':
             normed_motion = motion
             denormed_motion = self.dataset.t2m_dataset.inv_transform(normed_motion)
-            renormed_motion = (denormed_motion - self.dataset.mean_for_eval) / self.dataset.std_for_eval  # according to T2M norms
+            renormed_motion = (
+                                          denormed_motion - self.dataset.mean_for_eval) / self.dataset.std_for_eval  # according to T2M norms
             motion = renormed_motion
             # This step is needed because T2M evaluators expect their norm convention
 

@@ -37,7 +37,7 @@ niter = os.path.basename(args.model_path).replace('model', '').replace('.pt', ''
 device = 'cuda'
 data_version = "posescript-A1"
 batch_size = 32
-split_for_research = 'train'
+split_for_research = 'all'
 
 
 def setup(model_path, split_for_research):
@@ -90,6 +90,7 @@ in_context = open("/mnt/disk_1/jinpeng/motion-diffusion-model/T2M/prompt3.txt").
 
 retries = 1000
 for prompt in ['a man bends over', 'a man cries', 'a man is eating', 'a man is excited', 'a man plays soccer', 'a man prays', 'a man raise arms', 'a man shoot basketball', 'a man squat', 'a man walks', 'a man dance waltz']:
+# for prompt in ['a man bends over']:
     user_input = str(in_context) + prompt
     conversation.append({"role": "user", "content": user_input})
     retries = 1000
@@ -118,7 +119,7 @@ for prompt in ['a man bends over', 'a man cries', 'a man is eating', 'a man is e
     text2poses_similarity = []
     total_pose_features = []
     # pose
-    n_retrieve = 32
+    n_retrieve = 8
     with torch.no_grad():
         for i in range(8):
             f = Fs[Fs.find("F"+str(i+1)) + 4: Fs.find("F"+str(i+2))-1]
@@ -148,12 +149,12 @@ for prompt in ['a man bends over', 'a man cries', 'a man is eating', 'a man is e
 
     random_string = generate_random_string(5)
 
-    out_path = os.path.join('/mnt/disk_1/jinpeng/motion-diffusion-model/0914_unseen', prompt.split(' ')[-1], random_string)
+    out_path = os.path.join('/mnt/disk_1/jinpeng/motion-diffusion-model/0916_unseen_ret_again', prompt.split(' ')[-1], random_string)
     print(f"Images saved in {out_path}")
     os.makedirs(f'{out_path}', exist_ok=True)
     print("==========Generating Pose Image==========")
     margin_img = 320
-    nb_rows = 4
+    nb_rows = 1
     nb_cols = 8
     for pose_i, pose in enumerate(poses):
         imgs = utils_visu.image_from_pose_data(pose, body_model)
@@ -210,6 +211,7 @@ for prompt in ['a man bends over', 'a man cries', 'a man is eating', 'a man is e
     imgs_selected = [img[margin_img:-margin_img, margin_img:-margin_img] for img in imgs_selected]
 
     image_width, image_height = imgs_selected[0].shape[1], imgs_selected[0].shape[0]
+    # merged image map design
     merged_width = nb_cols * image_width
     merged_height = math.floor(1) * image_height
     merged_image = Image.new('RGB', (merged_width, merged_height))
@@ -276,8 +278,10 @@ for prompt in ['a man bends over', 'a man cries', 'a man is eating', 'a man is e
 
     npy_path = os.path.join(out_path, prompt.split(' ')[-1] + '.npy')
     prompt_path = os.path.join(out_path, prompt.split(' ')[-1] + '_prompt.npy')
-    gpt_response_path = os.path.join(out_path, prompt.split(' ')[-1] + '_gpt.npy')
+    gpt_response_path = os.path.join(out_path, prompt.split(' ')[-1] + '_gpt.json')
     print(f"saving results file to [{npy_path}]")
     np.save(npy_path, all_motions)
     np.save(prompt_path, prompt)
-    np.save(gpt_response_path, Fs)
+    f2 = open(gpt_response_path, 'w')
+    f2.write(Fs)
+    f2.close()

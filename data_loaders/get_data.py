@@ -18,6 +18,9 @@ def get_dataset_class(name):
     elif name == "kit":
         from data_loaders.humanml.data.dataset import KIT
         return KIT
+    elif name == "craft":
+        from data_loaders.humanml.data.dataset import MotionCraft
+        return MotionCraft
     else:
         raise ValueError(f'Unsupported dataset name [{name}]')
 
@@ -33,7 +36,7 @@ def get_collate_fn(name, hml_mode='train'):
 
 def get_dataset(name, num_frames, split='train', hml_mode='train'):
     DATA = get_dataset_class(name)
-    if name in ["humanml", "kit"]:
+    if name in ["humanml", "kit", "craft"]:
         dataset = DATA(split=split, num_frames=num_frames, mode=hml_mode)
     else:
         dataset = DATA(split=split, num_frames=num_frames)

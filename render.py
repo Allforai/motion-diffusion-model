@@ -72,13 +72,13 @@ if __name__ == '__main__':
     #         output=os.path.join(output_gt, namelist[file]), downsample=False, mode=mode)
     # data shape: ( 64, 6890, 3)
     mode = 'video'
-    path = '/mnt/disk_1/jinpeng/motion-diffusion-model/0913_unseen'
+    path = '/mnt/disk_1/jinpeng/motion-diffusion-model/1006_gptprompt_3/2023-10-06-18-33-53'
     data_path = []
     for file in os.listdir(path):
-        for name_1 in os.listdir(os.path.join(path, file)):
-            for name_2 in os.listdir(os.path.join(path, file, name_1)):
-                if '_' not in name_2 and 'npy' in name_2:
-                    data_path.append(os.path.join(path, file, name_1, name_2))
+        if '.json' not in file:
+            for name_1 in os.listdir(os.path.join(path, file)):
+                if 'vertices' in name_1:
+                    data_path.append(os.path.join(path, file, name_1))
     for npy_path in data_path:
         file = np.load(npy_path)[0]
         render_cli(

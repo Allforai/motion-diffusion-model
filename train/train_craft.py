@@ -1,19 +1,16 @@
-# This code is based on https://github.com/openai/guided-diffusion
-"""
-Train a diffusion model on images.
-"""
-import pydevd_pycharm
-
-pydevd_pycharm.settrace('10.8.31.54', port=17778, stdoutToServer=True, stderrToServer=True)
+from utils.parser_util import train_args
+from utils.fixseed import fixseed
 import os
 import json
-from utils.fixseed import fixseed
-from utils.parser_util import train_args
 from utils import dist_util
-from train.training_loop import TrainLoop
-from data_loaders.get_data import get_dataset_loader
+from data_loaders.humanml.data.dataset import MotionCraft
+from torch.utils.data import DataLoader
 from utils.model_util import create_model_and_diffusion
+from train.training_loop import TrainLoop
+import pydevd_pycharm
+pydevd_pycharm.settrace('10.81.48.3', port=17778, stdoutToServer=True, stderrToServer=True)
 from train.train_platforms import ClearmlPlatform, TensorboardPlatform, NoPlatform  # required for the eval operation
+from data_loaders.tensors import t2m_collate
 
 
 def main():
@@ -36,18 +33,19 @@ def main():
     dist_util.setup_dist(args.device)
 
     print("creating data loader...")
-    data = get_dataset_loader(name=args.dataset, batch_size=args.batch_size, num_frames=args.num_frames)
+    training_data = MotionCraft(datapath='dataset/p2m_humanml_opt.txt', split="train")
+    train_loader = DataLoader(training_data, batch_size=args.batch_size, shuffle=True, num_workers=8, collate_fn=t2m_collate)
 
     print("creating model and diffusion...")
-    model, diffusion = create_model_and_diffusion(args, data)
+    model, diffusion = create_model_and_diffusion(args, train_loader)
     model.to(dist_util.dev())
     model.rot2xyz.smpl_model.eval()
 
     print('Total params: %.2fM' % (sum(p.numel() for p in model.parameters_wo_clip()) / 1000000.0))
     print("Training...")
-    TrainLoop(args, train_platform, model, diffusion, data).run_loop()
+    TrainLoop(args, train_platform, model, diffusion, train_loader).run_loop()
     train_platform.close()
 
 
-if __name__ == "__main__":
+if __name__=="__main__":
     main()

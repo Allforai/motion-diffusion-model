@@ -112,7 +112,7 @@ def smpl_data_to_matrix_and_trans(data):
     axis_angle_poses = torch.cat((root_orient.reshape(nframes, -1, 3), pose_body.reshape(nframes, -1, 3)), dim=1)
 
     matrix_poses = axis_angle_to("matrix", axis_angle_poses)
-
+    axis_angle_to("rot6d", axis_angle_poses)
     # extract the root gravity axis
     # for smpl it is the last coordinate
     root_y = trans[..., 2]
