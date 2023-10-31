@@ -82,15 +82,16 @@ def main():
                 const_noise=False,
             )
             all_motions[rep_i].append(np.split(final.cpu().numpy(), final.shape[0]))
-        namelist.append(model_kwargs['y']['keyid'])
-        all_motions_gt.append(np.split(source.cpu().numpy(), source.shape[0]))
+        for name in model_kwargs['y']['keyid']:
+            namelist.append(name)
+        all_motions_gt.extend(np.split(source.cpu().numpy(), source.shape[0]))
     for i in range(args.num_repetitions):
         all_motions[i] = np.concatenate(all_motions[i], axis=0)
         for j, name in enumerate(namelist):
             os.makedirs(os.path.join(out_path, 'repeat_' + str(i), name), exist_ok=True)
             np.save(os.path.join(out_path, 'repeat_' + str(i), name, 'motion.npy'), all_motions[i][j])
             if i == 0:
-                np.save(os.path.join(out_path, name, 'motion_gt.npy'), all_motions_gt[j])
+                np.save(os.path.join(out_path, 'repeat_' + str(i), name, 'motion_gt.npy'), all_motions_gt[j])
 
 
 if __name__ == "__main__":
