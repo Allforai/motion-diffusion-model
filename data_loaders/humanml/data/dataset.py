@@ -14,6 +14,8 @@ from data_loaders.humanml.utils.get_opt import get_opt
 from einops import rearrange
 from .geometry import axis_angle_to_matrix, matrix_to_axis_angle
 from .tools import axis_angle_to, matrix_to
+
+
 # import spacy
 
 def collate_fn(batch):
@@ -785,6 +787,87 @@ class HumanML3D(data.Dataset):
         return self.t2m_dataset.__len__()
 
 
+# A wrapper class for t2m original dataset for MDM purposes
+class KIT(HumanML3D):
+    def __init__(self, mode, datapath='./dataset/kit_opt.txt', split="train", **kwargs):
+        super(KIT, self).__init__(mode, datapath, split, **kwargs)
+
+
+class Text2MotionMotionCraftOOD(data.Dataset):
+    def __init__(self, opt, split, w_vectorizer):
+        self.opt = opt
+        self.w_vectorizer = w_vectorizer
+        self.max_length = 20
+        self.pointer = 0
+        craft_data = np.load('/mnt/disk_1/jinpeng/T2M/data/debug/ood_sub_data_dict_fix_frames.npy', allow_pickle=True)
+        data_dict = []
+        length_list = []
+        for craft_item in tqdm(craft_data):
+            try:
+                motion = craft_item['motion']['features']
+                if len(motion) != 64:
+                    pass
+                text_data = craft_item['caption']
+                data_dict.append({'motion': motion,
+                                  'length': len(motion),
+                                  'text': text_data})
+                length_list.append(len(motion))
+            except:
+                # Some motion may not exist in KIT dataset
+                pass
+
+        self.length_arr = np.array(length_list)
+        self.data_dict = data_dict
+
+    def __len__(self):
+        return len(self.data_dict) - self.pointer
+
+    def __getitem__(self, item):
+        idx = self.pointer + item
+        data = self.data_dict[idx]
+        motion, m_length, caption = data['motion'], data['length'], data['text']
+
+        return None, None, caption, None, motion.type(torch.float32), m_length, None, \
+               str(idx).zfill(5)
+
+
+class MotionCraftOOD(data.Dataset):
+    def __init__(self, datapath='./dataset/humanml_opt.txt', split="train", **kwargs):
+        self.dataset_name = 'craft'
+        self.dataname = 'craft'
+
+        # Configurations of T2M dataset and KIT dataset is almost the same
+        abs_base_path = f'.'
+        dataset_opt_path = pjoin(abs_base_path, datapath)
+        device = None  # torch.device('cuda:4') # This param is not in use in this context
+        opt = get_opt(dataset_opt_path, device)
+        opt.meta_dir = pjoin(abs_base_path, opt.meta_dir)
+        opt.motion_dir = pjoin(abs_base_path, opt.motion_dir)
+        opt.model_dir = pjoin(abs_base_path, opt.model_dir)
+        opt.checkpoints_dir = pjoin(abs_base_path, opt.checkpoints_dir)
+        opt.data_root = pjoin(abs_base_path, opt.data_root)
+        opt.save_root = pjoin(abs_base_path, opt.save_root)
+        opt.meta_dir = './dataset'
+        self.opt = opt
+        self.split = split
+        print('Loading dataset %s ...' % opt.dataset_name)
+
+        self.w_vectorizer = WordVectorizer(pjoin(abs_base_path, 'glove'), 'our_vab')
+        self.t2m_dataset = Text2MotionMotionCraftOOD(self.opt, self.split, self.w_vectorizer)
+        self.num_actions = 1  # dummy placeholder
+
+        assert len(self.t2m_dataset) > 1, 'You loaded an empty dataset, ' \
+                                          'it is probably because your data dir has only texts and no motions.\n' \
+                                          'To train and evaluate MDM you should get the FULL data as described ' \
+                                          'in the README file.'
+
+    def __getitem__(self, item):
+        return self.t2m_dataset.__getitem__(item)
+
+    def __len__(self):
+        return self.t2m_dataset.__len__()
+
+
 class Text2MotionMotionCraft(data.Dataset):
     def __init__(self, opt, split, w_vectorizer):
         self.opt = opt
@@ -907,9 +990,3 @@ class MotionCraft(data.Dataset):
 
     def __len__(self):
         return self.t2m_dataset.__len__()
-
-
-# A wrapper class for t2m original dataset for MDM purposes
-class KIT(HumanML3D):
-    def __init__(self, mode, datapath='./dataset/kit_opt.txt', split="train", **kwargs):
-        super(KIT, self).__init__(mode, datapath, split, **kwargs)
