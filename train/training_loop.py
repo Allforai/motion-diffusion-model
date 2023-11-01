@@ -4,7 +4,7 @@ import os
 import time
 from types import SimpleNamespace
 import numpy as np
-
+from torch.utils.data import DataLoader
 import blobfile as bf
 import torch
 from torch.optim import AdamW
@@ -19,13 +19,13 @@ from data_loaders.humanml.networks.evaluator_wrapper import EvaluatorMDMWrapper
 from eval import eval_humanml, eval_humanact12_uestc
 from data_loaders.get_data import get_dataset_loader
 from data_loaders.p2m.dataset import HumanML3D
-
+from data_loaders.humanml.data.dataset import MotionCraft
 # For ImageNet experiments, this was a good default value.
 # We found that the lg_loss_scale quickly climbed to
 # 20-21 within the first ~1K steps of training.
 INITIAL_LOG_LOSS_SCALE = 20.0
 from torch.utils.tensorboard import SummaryWriter
-
+from data_loaders.tensors import t2m_collate
 class TrainLoop:
     def __init__(self, args, train_platform, model, diffusion, data):
         self.args = args
@@ -100,6 +100,9 @@ class TrainLoop:
         elif 'p2m' in self.cond_mode and args.eval_during_training:
             self.test_data = HumanML3D(pose_length=args.pose_length, datapath='dataset/p2m_humanml_opt.txt', split='test')
             self.test_loader = DataLoader(self.test_data, batch_size=args.batch_size, shuffle=False, num_workers=8, drop_last=True)
+        elif args.dataset in ['craft'] and args.eval_during_training:
+            self.test_data = MotionCraft(datapath='dataset/p2m_humanml_opt.txt', split='test')
+            self.test_loader = DataLoader(self.test_data, batch_size=args.batch_size, shuffle=False, num_workers=8, drop_last=True, collate_fn=t2m_collate)
 
         self.use_ddp = False
         self.ddp_model = self.model
@@ -224,7 +227,18 @@ class TrainLoop:
                     self.train_platform.report_scalar(name=k, value=np.array(v).astype(float).mean(), iteration=self.step, group_name='Eval')
                 else:
                     self.train_platform.report_scalar(name=k, value=np.array(v).astype(float).mean(), iteration=self.step, group_name='Eval Unconstrained')
-
+        elif self.dataset in ['craft']:
+            loss_test = 0
+            with torch.no_grad():
+                for motion, cond in self.test_loader:
+                    motion = motion.to(self.device)
+                    cond['y'] = {key: val.to(self.device) if torch.is_tensor(val) else val for key, val in
+                                 cond['y'].items()}
+                    loss_test += self.test_step(motion, cond)
+            print('step[{}]: testing loss[{:0.5f}]'.format(self.step + self.resume_step, loss_test / len(self.test_loader)))
+            self.writer.add_scalars('Testing',
+                                    {'Testing': loss_test / len(self.test_loader)},
+                                    self.step + self.resume_step)
         end_eval = time.time()
         print(f'Evaluation time: {round(end_eval-start_eval)/60}min')
 

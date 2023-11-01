@@ -8,7 +8,7 @@ from torch.utils.data import DataLoader
 from utils.model_util import create_model_and_diffusion
 from train.training_loop import TrainLoop
 import pydevd_pycharm
-pydevd_pycharm.settrace('10.81.48.3', port=17778, stdoutToServer=True, stderrToServer=True)
+# pydevd_pycharm.settrace('10.8.31.54', port=17778, stdoutToServer=True, stderrToServer=True)
 from train.train_platforms import ClearmlPlatform, TensorboardPlatform, NoPlatform  # required for the eval operation
 from data_loaders.tensors import t2m_collate
 
